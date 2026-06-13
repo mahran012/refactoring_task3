@@ -16,9 +16,15 @@ build_property.InvariantGlobalization =
 build_property.PlatformNeutralAssembly = 
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
-build_property.RootNamespace = AutoServiceApp.Tests
-build_property.ProjectDir = D:\refactoring_task3\AutoServiceApp.Tests\
+build_property.RootNamespace = AutoServiceApp
+build_property.ProjectDir = D:\refactoring_task3\AutoServiceApp\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.EffectiveAnalysisLevelStyle = 8.0
 build_property.EnableCodeStyleSeverity = 
+
+[D:/refactoring_task3/AutoServiceApp/App.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
+[D:/refactoring_task3/AutoServiceApp/MainWindow.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
