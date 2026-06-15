@@ -11,11 +11,6 @@ public class VehicleDetails
 
     public void ApplyTo(Car car)
     {
-        car.Make = Make;
-        car.Model = Model;
-        car.Year = Year;
-        car.Vin = Vin;
-        car.Mileage = Mileage;
-        car.LicensePlate = LicensePlate;
+        car.UpdateVehicle(this);
     }
 }

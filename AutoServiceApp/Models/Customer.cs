@@ -10,6 +10,25 @@ public class Customer : BaseEntity, IExportable
     public List<Car> Cars { get; set; } = new();
     public string LastPaymentMethod { get; set; } = PaymentMethod.Cash;
 
+    public void UpdateContact(CustomerContactDetails details)
+    {
+        Name = details.Name;
+        Phone = details.Phone;
+        Email = details.Email;
+        Address = details.Address;
+    }
+
+    public void AddCar(Car car)
+    {
+        if (Cars.All(x => x.Id != car.Id))
+            Cars.Add(car);
+    }
+
+    public void RemoveCar(Car car)
+    {
+        Cars.RemoveAll(x => x.Id == car.Id);
+    }
+
     public string Export() => $"{Name};{Phone};{Email};{Address}";
     public override string ToString() => string.IsNullOrWhiteSpace(Phone) ? Name : $"{Name} ({Phone})";
 }

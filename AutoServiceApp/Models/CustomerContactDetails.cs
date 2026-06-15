@@ -9,9 +9,6 @@ public class CustomerContactDetails
 
     public void ApplyTo(Customer customer)
     {
-        customer.Name = Name;
-        customer.Phone = Phone;
-        customer.Email = Email;
-        customer.Address = Address;
+        customer.UpdateContact(this);
     }
 }

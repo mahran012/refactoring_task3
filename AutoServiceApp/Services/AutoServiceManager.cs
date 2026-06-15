@@ -95,7 +95,7 @@ public class AutoServiceManager
     public Customer AddCustomer(CustomerContactDetails contactDetails)
     {
         var customer = new Customer();
-        contactDetails.ApplyTo(customer);
+        customer.UpdateContact(contactDetails);
         _customers.Add(customer);
         SaveAll();
         return customer;
@@ -114,7 +114,7 @@ public class AutoServiceManager
 
     public void UpdateCustomer(Customer customer, CustomerContactDetails contactDetails)
     {
-        contactDetails.ApplyTo(customer);
+        customer.UpdateContact(contactDetails);
         foreach (var order in _orders.Where(x => x.CustomerId == customer.Id))
             order.Customer = customer;
         SaveAll();
@@ -145,15 +145,11 @@ public class AutoServiceManager
 
     public Car AddCar(Customer? owner, VehicleDetails vehicleDetails)
     {
-        var car = new Car
-        {
-            CustomerId = owner?.Id ?? "",
-            Owner = owner
-        };
-        vehicleDetails.ApplyTo(car);
+        var car = new Car();
+        car.AssignOwner(owner);
+        car.UpdateVehicle(vehicleDetails);
         _cars.Add(car);
-        if (owner != null)
-            owner.Cars.Add(car);
+        owner?.AddCar(car);
         SaveAll();
         return car;
     }
@@ -173,9 +169,8 @@ public class AutoServiceManager
 
     public void UpdateCar(Car car, Customer? owner, VehicleDetails vehicleDetails)
     {
-        car.CustomerId = owner?.Id ?? "";
-        car.Owner = owner;
-        vehicleDetails.ApplyTo(car);
+        car.AssignOwner(owner);
+        car.UpdateVehicle(vehicleDetails);
         RelinkEverything();
         SaveAll();
     }
@@ -184,7 +179,7 @@ public class AutoServiceManager
     {
         _cars.Remove(car);
         foreach (var c in _customers)
-            c.Cars.RemoveAll(x => x.Id == car.Id);
+            c.RemoveCar(car);
         foreach (var order in _orders.Where(x => x.CarId == car.Id).ToList())
             _orders.Remove(order);
         SaveAll();
@@ -203,7 +198,7 @@ public class AutoServiceManager
     public Mechanic AddMechanic(MechanicDetails details)
     {
         var mechanic = new Mechanic();
-        details.ApplyTo(mechanic);
+        mechanic.UpdateProfile(details);
         _mechanics.Add(mechanic);
         SaveAll();
         return mechanic;
@@ -221,7 +216,7 @@ public class AutoServiceManager
 
     public void UpdateMechanic(Mechanic mechanic, MechanicDetails details)
     {
-        details.ApplyTo(mechanic);
+        mechanic.UpdateProfile(details);
         SaveAll();
     }
 
@@ -230,8 +225,7 @@ public class AutoServiceManager
         _mechanics.Remove(m);
         foreach (var order in _orders.Where(o => o.AssignedMechanicId == m.Id))
         {
-            order.AssignedMechanicId = "";
-            order.AssignedMechanic = null;
+            order.AssignMechanic(null);
         }
         SaveAll();
     }
@@ -250,7 +244,7 @@ public class AutoServiceManager
     public Part AddPart(PartDetails details)
     {
         var part = new Part();
-        details.ApplyTo(part);
+        part.UpdateDetails(details);
         _parts.Add(part);
         SaveAll();
         return part;
@@ -269,7 +263,7 @@ public class AutoServiceManager
 
     public void UpdatePart(Part part, PartDetails details)
     {
-        details.ApplyTo(part);
+        part.UpdateDetails(details);
         SaveAll();
     }
 
@@ -294,24 +288,9 @@ public class AutoServiceManager
 
     public RepairOrder CreateOrder(RepairOrderDetails details)
     {
-        var order = new RepairOrder
-        {
-            OrderNumber = "RO-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"),
-            CustomerId = details.Customer?.Id ?? "",
-            CarId = details.Car?.Id ?? "",
-            Customer = details.Customer,
-            Car = details.Car,
-            ProblemDescription = details.Description,
-            AssignedMechanicId = details.Mechanic?.Id ?? "",
-            AssignedMechanic = details.Mechanic,
-            Status = details.Status,
-            PaymentMethod = details.PaymentMethod,
-            Cost = details.Cost
-        };
-        order.StatusHistory.Add($"{DateTime.Now:g}: order created with status {details.Status}");
+        var order = RepairOrder.Create(details, "RO-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
         _orders.Add(order);
-        if (details.Mechanic != null)
-            details.Mechanic.AssignedOrderIds.Add(order.Id);
+        details.Mechanic?.AssignOrder(order.Id);
         SaveAll();
         return order;
     }
@@ -332,15 +311,7 @@ public class AutoServiceManager
 
     public void UpdateOrder(RepairOrder order, RepairOrderDetails details)
     {
-        order.CustomerId = details.Customer?.Id ?? "";
-        order.CarId = details.Car?.Id ?? "";
-        order.Customer = details.Customer;
-        order.Car = details.Car;
-        order.ProblemDescription = details.Description;
-        order.AssignedMechanicId = details.Mechanic?.Id ?? "";
-        order.AssignedMechanic = details.Mechanic;
-        order.PaymentMethod = details.PaymentMethod;
-        order.Cost = details.Cost;
+        order.ApplyDetails(details);
         if (order.Status != details.Status)
             ChangeOrderStatus(order, details.Status, NotificationType.Both);
         RelinkEverything();
@@ -351,7 +322,7 @@ public class AutoServiceManager
     {
         _orders.Remove(order);
         foreach (var mechanic in _mechanics)
-            mechanic.AssignedOrderIds.Remove(order.Id);
+            mechanic.UnassignOrder(order.Id);
         SaveAll();
     }
 
@@ -360,8 +331,7 @@ public class AutoServiceManager
         StatusHelper.MarkStatus(order, newStatus);
         if (OrderStatus.IsReady(newStatus))
             order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
-        if (order.AssignedMechanic != null && !order.AssignedMechanic.AssignedOrderIds.Contains(order.Id))
-            order.AssignedMechanic.AssignedOrderIds.Add(order.Id);
+        order.AssignedMechanic?.AssignOrder(order.Id);
         NotifyAboutStatus(order, notificationType);
         SaveAll();
     }
@@ -378,21 +348,17 @@ public class AutoServiceManager
 
     public void AddWorkToOrder(RepairOrder order, RepairWorkDetails details)
     {
-        order.Works.Add(details.ToRepairWork());
+        order.AddWork(details.ToRepairWork());
         order.Cost = CalculateOrderCost(order, false, order.PaymentMethod);
         SaveAll();
     }
 
     public bool UsePartForOrder(RepairOrder order, Part part, int qty)
     {
-        if (part.Stock < qty)
+        if (!part.TryTakeFromStock(qty))
             return false;
 
-        part.Stock -= qty;
-        for (var i = 0; i < qty; i++)
-            order.UsedPartIds.Add(part.Id);
-        order.Cost += part.Price * qty * ImmediatePartUsageMarkup;
-        order.StatusHistory.Add($"{DateTime.Now:g}: part used {part.Name} x{qty}");
+        order.AddPartUsage(part, qty, ImmediatePartUsageMarkup);
         SaveAll();
         return true;
     }

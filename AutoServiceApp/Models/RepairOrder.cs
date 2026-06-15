@@ -22,6 +22,76 @@ public class RepairOrder : BaseEntity
     public List<string> UsedPartIds { get; set; } = new();
     public List<string> StatusHistory { get; set; } = new();
 
+    public static RepairOrder Create(RepairOrderDetails details, string orderNumber)
+    {
+        var order = new RepairOrder
+        {
+            OrderNumber = orderNumber,
+            Status = details.Status,
+            Cost = details.Cost
+        };
+        order.ApplyDetails(details);
+        order.RecordHistory($"order created with status {details.Status}");
+        return order;
+    }
+
+    public void ApplyDetails(RepairOrderDetails details)
+    {
+        AssignCustomerAndCar(details.Customer, details.Car);
+        AssignMechanic(details.Mechanic);
+        UpdateDescription(details.Description);
+        ChangePaymentMethod(details.PaymentMethod);
+        SetCost(details.Cost);
+    }
+
+    public void AssignCustomerAndCar(Customer? customer, Car? car)
+    {
+        CustomerId = customer?.Id ?? "";
+        CarId = car?.Id ?? "";
+        Customer = customer;
+        Car = car;
+    }
+
+    public void AssignMechanic(Mechanic? mechanic)
+    {
+        AssignedMechanicId = mechanic?.Id ?? "";
+        AssignedMechanic = mechanic;
+    }
+
+    public void UpdateDescription(string description)
+    {
+        ProblemDescription = description;
+    }
+
+    public void ChangePaymentMethod(string paymentMethod)
+    {
+        PaymentMethod = paymentMethod;
+    }
+
+    public void SetCost(decimal cost)
+    {
+        Cost = cost;
+    }
+
+    public void AddWork(RepairWork work)
+    {
+        Works.Add(work);
+    }
+
+    public void AddPartUsage(Part part, int quantity, decimal markup)
+    {
+        for (var i = 0; i < quantity; i++)
+            UsedPartIds.Add(part.Id);
+
+        Cost += part.Price * quantity * markup;
+        RecordHistory($"part used {part.Name} x{quantity}");
+    }
+
+    public void RecordHistory(string message)
+    {
+        StatusHistory.Add($"{DateTime.Now:g}: {message}");
+    }
+
     public override string ToString()
     {
         var client = Customer?.Name ?? CustomerId;

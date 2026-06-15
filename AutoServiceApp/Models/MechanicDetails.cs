@@ -8,8 +8,6 @@ public class MechanicDetails
 
     public void ApplyTo(Mechanic mechanic)
     {
-        mechanic.Name = Name;
-        mechanic.Specialization = Specialization;
-        mechanic.HourRate = HourRate;
+        mechanic.UpdateProfile(this);
     }
 }

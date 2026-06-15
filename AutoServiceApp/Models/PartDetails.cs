@@ -9,9 +9,6 @@ public class PartDetails
 
     public void ApplyTo(Part part)
     {
-        part.Name = Name;
-        part.Article = Article;
-        part.Price = Price;
-        part.Stock = Stock;
+        part.UpdateDetails(this);
     }
 }
