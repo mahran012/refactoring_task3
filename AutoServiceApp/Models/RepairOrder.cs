@@ -21,6 +21,11 @@ public class RepairOrder : BaseEntity
     public List<RepairWork> Works { get; set; } = new();
     public List<string> UsedPartIds { get; set; } = new();
     public List<string> StatusHistory { get; set; } = new();
+    public string Type { get; set; } = RepairOrderType.Standard;
+    public bool NeedTaxi { get; set; }
+    public decimal UrgentFee { get; set; }
+    public string WarrantyNumber { get; set; } = "";
+    public bool ApprovedByDealer { get; set; }
 
     public static RepairOrder Create(RepairOrderDetails details, string orderNumber)
     {
@@ -97,22 +102,34 @@ public class RepairOrder : BaseEntity
         return Customer?.GetFirstCarOwnerPhone();
     }
 
+    public void MarkAsUrgent(decimal fee, bool needTaxi)
+    {
+        Type = RepairOrderType.Urgent;
+        UrgentFee = fee;
+        NeedTaxi = needTaxi;
+    }
+
+    public void MarkAsWarranty(string warrantyNumber, bool approvedByDealer)
+    {
+        Type = RepairOrderType.Warranty;
+        WarrantyNumber = warrantyNumber;
+        ApprovedByDealer = approvedByDealer;
+    }
+
+    public bool IsUrgent()
+    {
+        return Type == RepairOrderType.Urgent;
+    }
+
+    public bool IsWarranty()
+    {
+        return Type == RepairOrderType.Warranty;
+    }
+
     public override string ToString()
     {
         var client = Customer?.Name ?? CustomerId;
         var car = Car == null ? CarId : $"{Car.Make} {Car.Model}";
         return $"{OrderNumber}: {client}, {car}, {Status}, {Cost:C}";
     }
-}
-
-public class UrgentRepairOrder : RepairOrder
-{
-    public bool NeedTaxi { get; set; }
-    public decimal UrgentFee { get; set; } = 500;
-}
-
-public class WarrantyRepairOrder : RepairOrder
-{
-    public string WarrantyNumber { get; set; } = "";
-    public bool ApprovedByDealer { get; set; }
 }

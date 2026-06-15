@@ -7,14 +7,6 @@ public class RepairReport
     public DateTime To { get; set; } = DateTime.Today;
     public string Text { get; set; } = "";
     public List<RepairOrder> Orders { get; set; } = new();
-}
-
-public class UrgentRepairReport : RepairReport
-{
-    public decimal ExtraRevenue { get; set; }
-}
-
-public class WarrantyRepairReport : RepairReport
-{
-    public int ApprovedCount { get; set; }
+    public decimal UrgentExtraRevenue { get; set; }
+    public int ApprovedWarrantyCount { get; set; }
 }
