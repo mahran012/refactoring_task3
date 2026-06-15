@@ -92,6 +92,11 @@ public class RepairOrder : BaseEntity
         StatusHistory.Add($"{DateTime.Now:g}: {message}");
     }
 
+    public string? GetCustomerFirstCarOwnerPhone()
+    {
+        return Customer?.GetFirstCarOwnerPhone();
+    }
+
     public override string ToString()
     {
         var client = Customer?.Name ?? CustomerId;

@@ -365,6 +365,41 @@ public class AutoServiceManager
         return OrderDetailsBuilder.Build(order);
     }
 
+    public Customer? GetOwnerForCar(Car car)
+    {
+        return car.Owner ?? FindCustomer(car.CustomerId);
+    }
+
+    public Customer? GetCustomerForOrder(RepairOrder order)
+    {
+        return order.Customer ?? FindCustomer(order.CustomerId);
+    }
+
+    public Car? GetCarForOrder(RepairOrder order)
+    {
+        return order.Car ?? FindCar(order.CarId);
+    }
+
+    public Mechanic? GetMechanicForOrder(RepairOrder order)
+    {
+        return order.AssignedMechanic ?? FindMechanic(order.AssignedMechanicId);
+    }
+
+    public Customer? FindCustomer(string customerId)
+    {
+        return _customers.FirstOrDefault(x => x.Id == customerId);
+    }
+
+    public Car? FindCar(string carId)
+    {
+        return _cars.FirstOrDefault(x => x.Id == carId);
+    }
+
+    public Mechanic? FindMechanic(string mechanicId)
+    {
+        return _mechanics.FirstOrDefault(x => x.Id == mechanicId);
+    }
+
     public string BuildReports(DateTime from, DateTime to)
     {
         return ReportService.BuildRevenueReport(_orders, from, to) + "\n"

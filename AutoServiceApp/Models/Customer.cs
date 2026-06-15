@@ -29,6 +29,12 @@ public class Customer : BaseEntity, IExportable
         Cars.RemoveAll(x => x.Id == car.Id);
     }
 
+    public string? GetFirstCarOwnerPhone()
+    {
+        var firstCar = Cars.FirstOrDefault();
+        return firstCar?.GetOwnerPhone();
+    }
+
     public string Export() => $"{Name};{Phone};{Email};{Address}";
     public override string ToString() => string.IsNullOrWhiteSpace(Phone) ? Name : $"{Name} ({Phone})";
 }

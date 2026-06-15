@@ -33,7 +33,8 @@ public class OrderDetailsBuilder
 
     private static void AppendOwnerPhone(StringBuilder details, RepairOrder order)
     {
-        if (order.Customer?.Cars.Count > 0)
-            details.AppendLine("First car owner phone: " + order.Customer.Cars[0].Owner?.Phone);
+        var ownerPhone = order.GetCustomerFirstCarOwnerPhone();
+        if (!string.IsNullOrWhiteSpace(ownerPhone))
+            details.AppendLine("First car owner phone: " + ownerPhone);
     }
 }

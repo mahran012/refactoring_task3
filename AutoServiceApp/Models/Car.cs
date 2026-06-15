@@ -28,5 +28,10 @@ public class Car : BaseEntity
         LicensePlate = details.LicensePlate;
     }
 
+    public string? GetOwnerPhone()
+    {
+        return Owner?.Phone;
+    }
+
     public override string ToString() => $"{Make} {Model}, {LicensePlate}, {Year}, {Mileage} km";
 }

@@ -184,7 +184,7 @@ public partial class MainWindow : Window
         {
             if (_carList.SelectedItem is Car car)
             {
-                _carCustomer.SelectedItem = Manager.Customers.FirstOrDefault(x => x.Id == car.CustomerId);
+                _carCustomer.SelectedItem = Manager.GetOwnerForCar(car);
                 _carMake.Text = car.Make;
                 _carModel.Text = car.Model;
                 _carYear.Text = car.Year.ToString();
@@ -409,9 +409,9 @@ public partial class MainWindow : Window
 
     private void FillOrder(RepairOrder o)
     {
-        _orderCustomer.SelectedItem = Manager.Customers.FirstOrDefault(x => x.Id == o.CustomerId);
-        _orderCar.SelectedItem = Manager.Cars.FirstOrDefault(x => x.Id == o.CarId);
-        _orderMechanic.SelectedItem = Manager.Mechanics.FirstOrDefault(x => x.Id == o.AssignedMechanicId);
+        _orderCustomer.SelectedItem = Manager.GetCustomerForOrder(o);
+        _orderCar.SelectedItem = Manager.GetCarForOrder(o);
+        _orderMechanic.SelectedItem = Manager.GetMechanicForOrder(o);
         _orderStatus.SelectedItem = o.Status;
         _orderPayment.SelectedItem = o.PaymentMethod;
         _orderProblem.Text = o.ProblemDescription;
