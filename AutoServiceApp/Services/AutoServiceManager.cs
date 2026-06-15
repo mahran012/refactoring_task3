@@ -32,6 +32,11 @@ public class AutoServiceManager
     public OrderStatusHelper StatusHelper { get; set; } = new();
     public OrderCostCalculator OrderCostCalculator { get; set; } = new();
     public OrderDetailsBuilder OrderDetailsBuilder { get; set; } = new();
+    public CustomerService CustomerService { get; set; } = new();
+    public VehicleService VehicleService { get; set; } = new();
+    public MechanicService MechanicService { get; set; } = new();
+    public InventoryService InventoryService { get; set; } = new();
+    public RepairOrderWorkflowService OrderWorkflowService { get; set; } = new();
 
     public void Load()
     {
@@ -94,9 +99,7 @@ public class AutoServiceManager
 
     public Customer AddCustomer(CustomerContactDetails contactDetails)
     {
-        var customer = new Customer();
-        customer.UpdateContact(contactDetails);
-        _customers.Add(customer);
+        var customer = CustomerService.AddCustomer(_customers, contactDetails);
         PersistDomainChange();
         return customer;
     }
@@ -114,19 +117,13 @@ public class AutoServiceManager
 
     public void UpdateCustomer(Customer customer, CustomerContactDetails contactDetails)
     {
-        customer.UpdateContact(contactDetails);
-        foreach (var order in _orders.Where(x => x.CustomerId == customer.Id))
-            order.Customer = customer;
+        CustomerService.UpdateCustomer(_orders, customer, contactDetails);
         PersistDomainChange();
     }
 
     public void DeleteCustomer(Customer customer)
     {
-        _customers.Remove(customer);
-        foreach (var car in _cars.Where(x => x.CustomerId == customer.Id).ToList())
-            _cars.Remove(car);
-        foreach (var order in _orders.Where(x => x.CustomerId == customer.Id).ToList())
-            _orders.Remove(order);
+        CustomerService.DeleteCustomer(_customers, _cars, _orders, customer);
         PersistDomainChange();
     }
 
@@ -145,11 +142,7 @@ public class AutoServiceManager
 
     public Car AddCar(Customer? owner, VehicleDetails vehicleDetails)
     {
-        var car = new Car();
-        car.AssignOwner(owner);
-        car.UpdateVehicle(vehicleDetails);
-        _cars.Add(car);
-        owner?.AddCar(car);
+        var car = VehicleService.AddCar(_cars, owner, vehicleDetails);
         PersistDomainChange();
         return car;
     }
@@ -169,18 +162,13 @@ public class AutoServiceManager
 
     public void UpdateCar(Car car, Customer? owner, VehicleDetails vehicleDetails)
     {
-        car.AssignOwner(owner);
-        car.UpdateVehicle(vehicleDetails);
+        VehicleService.UpdateCar(car, owner, vehicleDetails);
         PersistDomainChange(refreshRelationships: true);
     }
 
     public void DeleteCar(Car car)
     {
-        _cars.Remove(car);
-        foreach (var c in _customers)
-            c.RemoveCar(car);
-        foreach (var order in _orders.Where(x => x.CarId == car.Id).ToList())
-            _orders.Remove(order);
+        VehicleService.DeleteCar(_cars, _customers, _orders, car);
         PersistDomainChange();
     }
 
@@ -196,9 +184,7 @@ public class AutoServiceManager
 
     public Mechanic AddMechanic(MechanicDetails details)
     {
-        var mechanic = new Mechanic();
-        mechanic.UpdateProfile(details);
-        _mechanics.Add(mechanic);
+        var mechanic = MechanicService.AddMechanic(_mechanics, details);
         PersistDomainChange();
         return mechanic;
     }
@@ -215,17 +201,13 @@ public class AutoServiceManager
 
     public void UpdateMechanic(Mechanic mechanic, MechanicDetails details)
     {
-        mechanic.UpdateProfile(details);
+        MechanicService.UpdateMechanic(mechanic, details);
         PersistDomainChange();
     }
 
     public void DeleteMechanic(Mechanic m)
     {
-        _mechanics.Remove(m);
-        foreach (var order in _orders.Where(o => o.AssignedMechanicId == m.Id))
-        {
-            order.AssignMechanic(null);
-        }
+        MechanicService.DeleteMechanic(_mechanics, _orders, m);
         PersistDomainChange();
     }
 
@@ -242,9 +224,7 @@ public class AutoServiceManager
 
     public Part AddPart(PartDetails details)
     {
-        var part = new Part();
-        part.UpdateDetails(details);
-        _parts.Add(part);
+        var part = InventoryService.AddPart(_parts, details);
         PersistDomainChange();
         return part;
     }
@@ -262,13 +242,13 @@ public class AutoServiceManager
 
     public void UpdatePart(Part part, PartDetails details)
     {
-        part.UpdateDetails(details);
+        InventoryService.UpdatePart(part, details);
         PersistDomainChange();
     }
 
     public void DeletePart(Part p)
     {
-        _parts.Remove(p);
+        InventoryService.DeletePart(_parts, p);
         PersistDomainChange();
     }
 
@@ -287,9 +267,7 @@ public class AutoServiceManager
 
     public RepairOrder CreateOrder(RepairOrderDetails details)
     {
-        var order = RepairOrder.Create(details, "RO-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
-        _orders.Add(order);
-        details.Mechanic?.AssignOrder(order.Id);
+        var order = OrderWorkflowService.CreateOrder(_orders, details);
         PersistDomainChange();
         return order;
     }
@@ -310,26 +288,20 @@ public class AutoServiceManager
 
     public void UpdateOrder(RepairOrder order, RepairOrderDetails details)
     {
-        order.ApplyDetails(details);
-        if (order.Status != details.Status)
+        if (OrderWorkflowService.ApplyOrderDetails(order, details))
             ChangeOrderStatus(order, details.Status, NotificationType.Both);
         PersistDomainChange(refreshRelationships: true);
     }
 
     public void DeleteOrder(RepairOrder order)
     {
-        _orders.Remove(order);
-        foreach (var mechanic in _mechanics)
-            mechanic.UnassignOrder(order.Id);
+        OrderWorkflowService.DeleteOrder(_orders, _mechanics, order);
         PersistDomainChange();
     }
 
     public void ChangeOrderStatus(RepairOrder order, string newStatus, string notificationType)
     {
-        StatusHelper.MarkStatus(order, newStatus);
-        if (OrderStatus.IsReady(newStatus))
-            order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
-        order.AssignedMechanic?.AssignOrder(order.Id);
+        OrderWorkflowService.ChangeStatus(order, newStatus, order.PaymentMethod, _parts, StatusHelper, OrderCostCalculator);
         NotifyAboutStatus(order, notificationType);
         PersistDomainChange();
     }
@@ -346,17 +318,15 @@ public class AutoServiceManager
 
     public void AddWorkToOrder(RepairOrder order, RepairWorkDetails details)
     {
-        order.AddWork(details.ToRepairWork());
-        order.Cost = CalculateOrderCost(order, false, order.PaymentMethod);
+        OrderWorkflowService.AddWork(order, details, _parts, OrderCostCalculator);
         PersistDomainChange();
     }
 
     public bool UsePartForOrder(RepairOrder order, Part part, int qty)
     {
-        if (!part.TryTakeFromStock(qty))
+        if (!InventoryService.UsePartForOrder(order, part, qty))
             return false;
 
-        order.AddPartUsage(part, qty, OrderCostCalculator.ImmediatePartUsageMarkup);
         PersistDomainChange();
         return true;
     }
@@ -416,14 +386,7 @@ public class AutoServiceManager
 
     public List<RepairOrder> GetOrdersForMechanic(Mechanic m)
     {
-        var result = new List<RepairOrder>();
-        foreach (var id in m.AssignedOrderIds)
-        {
-            var o = _orders.FirstOrDefault(x => x.Id == id);
-            if (o != null)
-                result.Add(o);
-        }
-        return result;
+        return MechanicService.GetOrdersForMechanic(_orders, m);
     }
 
     public void NotifyAboutStatus(RepairOrder order, string type)
