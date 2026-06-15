@@ -1,6 +1,6 @@
 namespace AutoServiceApp.Models;
 
-public class Customer : BaseEntity, IExportable
+public class Customer : BaseEntity
 {
     public string Name { get; set; } = "";
     public string Phone { get; set; } = "";
@@ -37,6 +37,5 @@ public class Customer : BaseEntity, IExportable
 
     public string GetContactDisplayText() => $"{Name} / {Phone}";
 
-    public string Export() => $"{Name};{Phone};{Email};{Address}";
     public override string ToString() => string.IsNullOrWhiteSpace(Phone) ? Name : $"{Name} ({Phone})";
 }
