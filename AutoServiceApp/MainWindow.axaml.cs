@@ -219,7 +219,7 @@ public partial class MainWindow : Window
         form.Children.Add(RowButtons(
             ("Create", (_, _) => { Manager.CreateOrder(ReadRepairOrderDetails()); ClearOrderForm(); RefreshAll(); }),
             ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, ReadRepairOrderDetails()); RefreshAll(); } }),
-            ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.Orders.Remove(o); Manager.SaveAll(); ClearOrderForm(); RefreshAll(); } })));
+            ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.DeleteOrder(o); ClearOrderForm(); RefreshAll(); } })));
 
         form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });
         _workName = Box("Work name");

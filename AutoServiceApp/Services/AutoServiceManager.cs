@@ -16,12 +16,19 @@ public class AutoServiceManager
     private const decimal LargeOrderDiscountThreshold = 10000m;
     private const decimal LargeOrderDiscountRate = 0.15m;
 
-    public List<Customer> Customers { get; set; } = new();
-    public List<Car> Cars { get; set; } = new();
-    public List<RepairOrder> Orders { get; set; } = new();
-    public List<Part> Parts { get; set; } = new();
-    public List<Mechanic> Mechanics { get; set; } = new();
-    public List<string> Notifications { get; set; } = new();
+    private List<Customer> _customers = new();
+    private List<Car> _cars = new();
+    private List<RepairOrder> _orders = new();
+    private List<Part> _parts = new();
+    private List<Mechanic> _mechanics = new();
+    private List<string> _notifications = new();
+
+    public IReadOnlyList<Customer> Customers => _customers;
+    public IReadOnlyList<Car> Cars => _cars;
+    public IReadOnlyList<RepairOrder> Orders => _orders;
+    public IReadOnlyList<Part> Parts => _parts;
+    public IReadOnlyList<Mechanic> Mechanics => _mechanics;
+    public IReadOnlyList<string> Notifications => _notifications;
 
 
     public JsonFileStore<Customer> CustomerStore { get; set; } = new();
@@ -36,42 +43,42 @@ public class AutoServiceManager
 
     public void Load()
     {
-        Customers = CustomerStore.Load("customers.json");
-        Cars = CarStore.Load("cars.json");
-        Orders = OrderStore.Load("orders.json");
-        Parts = PartStore.Load("parts.json");
-        Mechanics = MechanicStore.Load("mechanics.json");
+        _customers = CustomerStore.Load("customers.json");
+        _cars = CarStore.Load("cars.json");
+        _orders = OrderStore.Load("orders.json");
+        _parts = PartStore.Load("parts.json");
+        _mechanics = MechanicStore.Load("mechanics.json");
         RelinkEverything();
-        if (Customers.Count == 0 && Cars.Count == 0 && Mechanics.Count == 0)
+        if (_customers.Count == 0 && _cars.Count == 0 && _mechanics.Count == 0)
             Seed();
     }
 
     public void SaveAll()
     {
-        CustomerStore.Save("customers.json", Customers);
-        CarStore.Save("cars.json", Cars);
-        OrderStore.Save("orders.json", Orders);
-        PartStore.Save("parts.json", Parts);
-        MechanicStore.Save("mechanics.json", Mechanics);
+        CustomerStore.Save("customers.json", _customers);
+        CarStore.Save("cars.json", _cars);
+        OrderStore.Save("orders.json", _orders);
+        PartStore.Save("parts.json", _parts);
+        MechanicStore.Save("mechanics.json", _mechanics);
     }
 
     public void RelinkEverything()
     {
-        foreach (var c in Customers)
-            c.Cars = Cars.Where(x => x.CustomerId == c.Id).ToList();
+        foreach (var c in _customers)
+            c.Cars = _cars.Where(x => x.CustomerId == c.Id).ToList();
 
-        foreach (var car in Cars)
-            car.Owner = Customers.FirstOrDefault(x => x.Id == car.CustomerId);
+        foreach (var car in _cars)
+            car.Owner = _customers.FirstOrDefault(x => x.Id == car.CustomerId);
 
-        foreach (var order in Orders)
+        foreach (var order in _orders)
         {
-            order.Customer = Customers.FirstOrDefault(x => x.Id == order.CustomerId);
-            order.Car = Cars.FirstOrDefault(x => x.Id == order.CarId);
-            order.AssignedMechanic = Mechanics.FirstOrDefault(x => x.Id == order.AssignedMechanicId);
+            order.Customer = _customers.FirstOrDefault(x => x.Id == order.CustomerId);
+            order.Car = _cars.FirstOrDefault(x => x.Id == order.CarId);
+            order.AssignedMechanic = _mechanics.FirstOrDefault(x => x.Id == order.AssignedMechanicId);
         }
 
-        foreach (var m in Mechanics)
-            m.AssignedOrderIds = Orders.Where(x => x.AssignedMechanicId == m.Id).Select(x => x.Id).ToList();
+        foreach (var m in _mechanics)
+            m.AssignedOrderIds = _orders.Where(x => x.AssignedMechanicId == m.Id).Select(x => x.Id).ToList();
     }
 
     public Customer AddCustomer(string name, string phone, string email, string address)
@@ -89,7 +96,7 @@ public class AutoServiceManager
     {
         var customer = new Customer();
         contactDetails.ApplyTo(customer);
-        Customers.Add(customer);
+        _customers.Add(customer);
         SaveAll();
         return customer;
     }
@@ -108,18 +115,18 @@ public class AutoServiceManager
     public void UpdateCustomer(Customer customer, CustomerContactDetails contactDetails)
     {
         contactDetails.ApplyTo(customer);
-        foreach (var order in Orders.Where(x => x.CustomerId == customer.Id))
+        foreach (var order in _orders.Where(x => x.CustomerId == customer.Id))
             order.Customer = customer;
         SaveAll();
     }
 
     public void DeleteCustomer(Customer customer)
     {
-        Customers.Remove(customer);
-        foreach (var car in Cars.Where(x => x.CustomerId == customer.Id).ToList())
-            Cars.Remove(car);
-        foreach (var order in Orders.Where(x => x.CustomerId == customer.Id).ToList())
-            Orders.Remove(order);
+        _customers.Remove(customer);
+        foreach (var car in _cars.Where(x => x.CustomerId == customer.Id).ToList())
+            _cars.Remove(car);
+        foreach (var order in _orders.Where(x => x.CustomerId == customer.Id).ToList())
+            _orders.Remove(order);
         SaveAll();
     }
 
@@ -144,7 +151,7 @@ public class AutoServiceManager
             Owner = owner
         };
         vehicleDetails.ApplyTo(car);
-        Cars.Add(car);
+        _cars.Add(car);
         if (owner != null)
             owner.Cars.Add(car);
         SaveAll();
@@ -175,11 +182,11 @@ public class AutoServiceManager
 
     public void DeleteCar(Car car)
     {
-        Cars.Remove(car);
-        foreach (var c in Customers)
+        _cars.Remove(car);
+        foreach (var c in _customers)
             c.Cars.RemoveAll(x => x.Id == car.Id);
-        foreach (var order in Orders.Where(x => x.CarId == car.Id).ToList())
-            Orders.Remove(order);
+        foreach (var order in _orders.Where(x => x.CarId == car.Id).ToList())
+            _orders.Remove(order);
         SaveAll();
     }
 
@@ -197,7 +204,7 @@ public class AutoServiceManager
     {
         var mechanic = new Mechanic();
         details.ApplyTo(mechanic);
-        Mechanics.Add(mechanic);
+        _mechanics.Add(mechanic);
         SaveAll();
         return mechanic;
     }
@@ -220,8 +227,8 @@ public class AutoServiceManager
 
     public void DeleteMechanic(Mechanic m)
     {
-        Mechanics.Remove(m);
-        foreach (var order in Orders.Where(o => o.AssignedMechanicId == m.Id))
+        _mechanics.Remove(m);
+        foreach (var order in _orders.Where(o => o.AssignedMechanicId == m.Id))
         {
             order.AssignedMechanicId = "";
             order.AssignedMechanic = null;
@@ -244,7 +251,7 @@ public class AutoServiceManager
     {
         var part = new Part();
         details.ApplyTo(part);
-        Parts.Add(part);
+        _parts.Add(part);
         SaveAll();
         return part;
     }
@@ -268,7 +275,7 @@ public class AutoServiceManager
 
     public void DeletePart(Part p)
     {
-        Parts.Remove(p);
+        _parts.Remove(p);
         SaveAll();
     }
 
@@ -302,7 +309,7 @@ public class AutoServiceManager
             Cost = details.Cost
         };
         order.StatusHistory.Add($"{DateTime.Now:g}: order created with status {details.Status}");
-        Orders.Add(order);
+        _orders.Add(order);
         if (details.Mechanic != null)
             details.Mechanic.AssignedOrderIds.Add(order.Id);
         SaveAll();
@@ -337,6 +344,14 @@ public class AutoServiceManager
         if (order.Status != details.Status)
             ChangeOrderStatus(order, details.Status, NotificationType.Both);
         RelinkEverything();
+        SaveAll();
+    }
+
+    public void DeleteOrder(RepairOrder order)
+    {
+        _orders.Remove(order);
+        foreach (var mechanic in _mechanics)
+            mechanic.AssignedOrderIds.Remove(order.Id);
         SaveAll();
     }
 
@@ -385,7 +400,7 @@ public class AutoServiceManager
     public decimal CalculateOrderCost(RepairOrder order, bool final, string paymentMethod)
     {
         var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
-        var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * CalculatedPartMarkup);
+        var parts = order.UsedPartIds.Select(id => _parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * CalculatedPartMarkup);
         var result = works + parts;
         if (PaymentMethod.IsCard(paymentMethod))
             result += result * CardPaymentFeeRate;
@@ -417,10 +432,10 @@ public class AutoServiceManager
 
     public string BuildReports(DateTime from, DateTime to)
     {
-        return ReportService.BuildRevenueReport(Orders, from, to) + "\n"
-            + ReportService.BuildPopularWorks(Orders) + "\n\n"
-            + ReportService.BuildMechanicsLoad(Mechanics, Orders) + "\n"
-            + ReportService.BuildPartsStock(Parts);
+        return ReportService.BuildRevenueReport(_orders, from, to) + "\n"
+            + ReportService.BuildPopularWorks(_orders) + "\n\n"
+            + ReportService.BuildMechanicsLoad(_mechanics, _orders) + "\n"
+            + ReportService.BuildPartsStock(_parts);
     }
 
     public List<RepairOrder> GetOrdersForMechanic(Mechanic m)
@@ -428,7 +443,7 @@ public class AutoServiceManager
         var result = new List<RepairOrder>();
         foreach (var id in m.AssignedOrderIds)
         {
-            var o = Orders.FirstOrDefault(x => x.Id == id);
+            var o = _orders.FirstOrDefault(x => x.Id == id);
             if (o != null)
                 result.Add(o);
         }
@@ -449,7 +464,7 @@ public class AutoServiceManager
             SmsNotifier.SendSms(phone, text);
             EmailSender.Send(email, "Order status", text);
         }
-        Notifications.Add($"{DateTime.Now:g}: {type} {text}");
+        _notifications.Add($"{DateTime.Now:g}: {type} {text}");
     }
 
     private void Seed()
