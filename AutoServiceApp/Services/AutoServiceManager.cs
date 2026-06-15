@@ -37,6 +37,8 @@ public class AutoServiceManager
     public MechanicService MechanicService { get; set; } = new();
     public InventoryService InventoryService { get; set; } = new();
     public RepairOrderWorkflowService OrderWorkflowService { get; set; } = new();
+    public AutoServiceReportComposer ReportComposer { get; set; } = new();
+    public OrderStatusNotificationService StatusNotificationService { get; set; } = new();
 
     public void Load()
     {
@@ -378,10 +380,7 @@ public class AutoServiceManager
 
     public string BuildReports(DateTime from, DateTime to)
     {
-        return ReportService.BuildRevenueReport(_orders, from, to) + "\n"
-            + ReportService.BuildPopularWorks(_orders) + "\n\n"
-            + ReportService.BuildMechanicsLoad(_mechanics, _orders) + "\n"
-            + ReportService.BuildPartsStock(_parts);
+        return ReportComposer.Build(ReportService, _orders, _mechanics, _parts, from, to);
     }
 
     public List<RepairOrder> GetOrdersForMechanic(Mechanic m)
@@ -391,19 +390,7 @@ public class AutoServiceManager
 
     public void NotifyAboutStatus(RepairOrder order, string type)
     {
-        var phone = order.Customer?.Phone ?? "";
-        var email = order.Customer?.Email ?? "";
-        var text = $"Order {order.OrderNumber}: new status {order.Status}";
-        if (NotificationType.IsSms(type))
-            SmsNotifier.SendSms(phone, text);
-        else if (NotificationType.IsEmail(type))
-            EmailSender.Send(email, "Order status", text);
-        else
-        {
-            SmsNotifier.SendSms(phone, text);
-            EmailSender.Send(email, "Order status", text);
-        }
-        _notifications.Add($"{DateTime.Now:g}: {type} {text}");
+        StatusNotificationService.Notify(order, type, SmsNotifier, EmailSender, _notifications);
     }
 
     private void Seed()
