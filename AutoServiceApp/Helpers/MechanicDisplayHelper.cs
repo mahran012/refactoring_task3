@@ -2,7 +2,7 @@ using AutoServiceApp.Models;
 
 namespace AutoServiceApp.Helpers;
 
-public class MechanicDisplayHelper
+public class MechanicDisplayHelper : IDisplayFormatter<Mechanic>
 {
-    public string GetText(Mechanic mechanic) => mechanic.Name + " - " + mechanic.Specialization;
+    public string Format(Mechanic mechanic) => mechanic.Name + " - " + mechanic.Specialization;
 }

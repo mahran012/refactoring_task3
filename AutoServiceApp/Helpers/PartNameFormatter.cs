@@ -2,7 +2,7 @@ using AutoServiceApp.Models;
 
 namespace AutoServiceApp.Helpers;
 
-public class PartNameFormatter
+public class PartNameFormatter : IDisplayFormatter<Part>
 {
-    public string Pretty(Part part) => $"{part.Name} ({part.Article})";
+    public string Format(Part part) => $"{part.Name} ({part.Article})";
 }
