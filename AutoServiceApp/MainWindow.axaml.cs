@@ -133,8 +133,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "Email", _customerEmail);
         AddLabeled(form, "Address", _customerAddress);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddCustomer(_customerName.Text ?? "", _customerPhone.Text ?? "", _customerEmail.Text ?? "", _customerAddress.Text ?? ""); ClearCustomerForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_customerList.SelectedItem is Customer c) { Manager.UpdateCustomer(c, _customerName.Text ?? "", _customerPhone.Text ?? "", _customerEmail.Text ?? "", _customerAddress.Text ?? ""); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.AddCustomer(ReadCustomerContactDetails()); ClearCustomerForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_customerList.SelectedItem is Customer c) { Manager.UpdateCustomer(c, ReadCustomerContactDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_customerList.SelectedItem is Customer c) { _customerList.ItemsSource = null; Manager.DeleteCustomer(c); ClearCustomerForm(); RefreshAll(); } })));
         Grid.SetColumn(form, 0);
         grid.Children.Add(form);
@@ -174,8 +174,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "License plate", _carLicense);
         AddLabeled(form, "Mileage", _carMileage);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddCar(_carCustomer.SelectedItem as Customer, _carMake.Text ?? "", _carModel.Text ?? "", Int(_carYear.Text), _carVin.Text ?? "", Int(_carMileage.Text), _carLicense.Text ?? ""); ClearCarForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_carList.SelectedItem is Car car) { Manager.UpdateCar(car, _carCustomer.SelectedItem as Customer, _carMake.Text ?? "", _carModel.Text ?? "", Int(_carYear.Text), _carVin.Text ?? "", Int(_carMileage.Text), _carLicense.Text ?? ""); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.AddCar(_carCustomer.SelectedItem as Customer, ReadVehicleDetails()); ClearCarForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_carList.SelectedItem is Car car) { Manager.UpdateCar(car, _carCustomer.SelectedItem as Customer, ReadVehicleDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_carList.SelectedItem is Car car) { _carList.ItemsSource = null; Manager.DeleteCar(car); ClearCarForm(); RefreshAll(); } })));
         Grid.SetColumn(form, 0);
         grid.Children.Add(form);
@@ -425,6 +425,30 @@ public partial class MainWindow : Window
     {
         _orderList.SelectedItem = o;
         FillOrder(o);
+    }
+
+    private CustomerContactDetails ReadCustomerContactDetails()
+    {
+        return new CustomerContactDetails
+        {
+            Name = _customerName.Text ?? "",
+            Phone = _customerPhone.Text ?? "",
+            Email = _customerEmail.Text ?? "",
+            Address = _customerAddress.Text ?? ""
+        };
+    }
+
+    private VehicleDetails ReadVehicleDetails()
+    {
+        return new VehicleDetails
+        {
+            Make = _carMake.Text ?? "",
+            Model = _carModel.Text ?? "",
+            Year = Int(_carYear.Text),
+            Vin = _carVin.Text ?? "",
+            Mileage = Int(_carMileage.Text),
+            LicensePlate = _carLicense.Text ?? ""
+        };
     }
 
     private void ClearCustomerForm() => (_customerName.Text, _customerPhone.Text, _customerEmail.Text, _customerAddress.Text) = ("", "", "", "");

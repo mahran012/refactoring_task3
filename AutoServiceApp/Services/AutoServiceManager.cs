@@ -76,18 +76,38 @@ public class AutoServiceManager
 
     public Customer AddCustomer(string name, string phone, string email, string address)
     {
-        var c = new Customer { Name = name, Phone = phone, Email = email, Address = address };
-        Customers.Add(c);
+        return AddCustomer(new CustomerContactDetails
+        {
+            Name = name,
+            Phone = phone,
+            Email = email,
+            Address = address
+        });
+    }
+
+    public Customer AddCustomer(CustomerContactDetails contactDetails)
+    {
+        var customer = new Customer();
+        contactDetails.ApplyTo(customer);
+        Customers.Add(customer);
         SaveAll();
-        return c;
+        return customer;
     }
 
     public void UpdateCustomer(Customer customer, string name, string phone, string email, string address)
     {
-        customer.Name = name;
-        customer.Phone = phone;
-        customer.Email = email;
-        customer.Address = address;
+        UpdateCustomer(customer, new CustomerContactDetails
+        {
+            Name = name,
+            Phone = phone,
+            Email = email,
+            Address = address
+        });
+    }
+
+    public void UpdateCustomer(Customer customer, CustomerContactDetails contactDetails)
+    {
+        contactDetails.ApplyTo(customer);
         foreach (var order in Orders.Where(x => x.CustomerId == customer.Id))
             order.Customer = customer;
         SaveAll();
@@ -105,17 +125,25 @@ public class AutoServiceManager
 
     public Car AddCar(Customer? owner, string make, string model, int year, string vin, int mileage, string licensePlate)
     {
-        var car = new Car
+        return AddCar(owner, new VehicleDetails
         {
-            CustomerId = owner?.Id ?? "",
-            Owner = owner,
             Make = make,
             Model = model,
             Year = year,
             Vin = vin,
             Mileage = mileage,
             LicensePlate = licensePlate
+        });
+    }
+
+    public Car AddCar(Customer? owner, VehicleDetails vehicleDetails)
+    {
+        var car = new Car
+        {
+            CustomerId = owner?.Id ?? "",
+            Owner = owner
         };
+        vehicleDetails.ApplyTo(car);
         Cars.Add(car);
         if (owner != null)
             owner.Cars.Add(car);
@@ -125,14 +153,22 @@ public class AutoServiceManager
 
     public void UpdateCar(Car car, Customer? owner, string make, string model, int year, string vin, int mileage, string licensePlate)
     {
+        UpdateCar(car, owner, new VehicleDetails
+        {
+            Make = make,
+            Model = model,
+            Year = year,
+            Vin = vin,
+            Mileage = mileage,
+            LicensePlate = licensePlate
+        });
+    }
+
+    public void UpdateCar(Car car, Customer? owner, VehicleDetails vehicleDetails)
+    {
         car.CustomerId = owner?.Id ?? "";
         car.Owner = owner;
-        car.Make = make;
-        car.Model = model;
-        car.Year = year;
-        car.Vin = vin;
-        car.Mileage = mileage;
-        car.LicensePlate = licensePlate;
+        vehicleDetails.ApplyTo(car);
         RelinkEverything();
         SaveAll();
     }
