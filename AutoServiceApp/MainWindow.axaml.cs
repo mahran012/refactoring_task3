@@ -217,8 +217,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "Description", _orderProblem);
         AddLabeled(form, "Cost", _orderCost);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.CreateOrder(_orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? OrderStatus.New, _orderPayment.SelectedItem?.ToString() ?? PaymentMethod.Cash); ClearOrderForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, _orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? OrderStatus.New, Decimal(_orderCost.Text), _orderPayment.SelectedItem?.ToString() ?? PaymentMethod.Cash); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.CreateOrder(ReadRepairOrderDetails()); ClearOrderForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, ReadRepairOrderDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.Orders.Remove(o); Manager.SaveAll(); ClearOrderForm(); RefreshAll(); } })));
 
         form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });
@@ -228,7 +228,7 @@ public partial class MainWindow : Window
         AddLabeled(form, "Work", _workName);
         AddLabeled(form, "Hours", _workHours);
         AddLabeled(form, "Price", _workCost);
-        form.Children.Add(Button("Add work", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.AddWorkToOrder(o, _workName.Text ?? "", Double(_workHours.Text), Decimal(_workCost.Text)); RefreshAll(); SelectOrder(o); } }));
+        form.Children.Add(Button("Add work", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.AddWorkToOrder(o, ReadRepairWorkDetails()); RefreshAll(); SelectOrder(o); } }));
 
         form.Children.Add(new TextBlock { Text = "Use part", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });
         _usePartCombo = new ComboBox { PlaceholderText = "Part" };
@@ -274,8 +274,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "Price", _partPrice);
         AddLabeled(form, "Stock", _partStock);
         form.Children.Add(RowButtons(
-            ("Add", (_, _) => { Manager.AddPart(_partName.Text ?? "", _partArticle.Text ?? "", Decimal(_partPrice.Text), Int(_partStock.Text)); ClearPartForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_partList.SelectedItem is Part p) { Manager.UpdatePart(p, _partName.Text ?? "", _partArticle.Text ?? "", Decimal(_partPrice.Text), Int(_partStock.Text)); RefreshAll(); } }),
+            ("Add", (_, _) => { Manager.AddPart(ReadPartDetails()); ClearPartForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_partList.SelectedItem is Part p) { Manager.UpdatePart(p, ReadPartDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_partList.SelectedItem is Part p) { _partList.ItemsSource = null; Manager.DeletePart(p); ClearPartForm(); RefreshAll(); } })));
         Grid.SetColumn(form, 0);
         grid.Children.Add(form);
@@ -307,8 +307,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "Specialization", _mechanicSpec);
         AddLabeled(form, "Rate", _mechanicRate);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddMechanic(_mechanicName.Text ?? "", _mechanicSpec.Text ?? "", Decimal(_mechanicRate.Text)); ClearMechanicForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { Manager.UpdateMechanic(m, _mechanicName.Text ?? "", _mechanicSpec.Text ?? "", Decimal(_mechanicRate.Text)); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.AddMechanic(ReadMechanicDetails()); ClearMechanicForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { Manager.UpdateMechanic(m, ReadMechanicDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { _mechanicList.ItemsSource = null; Manager.DeleteMechanic(m); ClearMechanicForm(); RefreshAll(); } })));
         form.Children.Add(new TextBlock { Text = "Assigned orders" });
         form.Children.Add(_mechanicOrders);
@@ -448,6 +448,51 @@ public partial class MainWindow : Window
             Vin = _carVin.Text ?? "",
             Mileage = Int(_carMileage.Text),
             LicensePlate = _carLicense.Text ?? ""
+        };
+    }
+
+    private RepairOrderDetails ReadRepairOrderDetails()
+    {
+        return new RepairOrderDetails
+        {
+            Customer = _orderCustomer.SelectedItem as Customer,
+            Car = _orderCar.SelectedItem as Car,
+            Description = _orderProblem.Text ?? "",
+            Mechanic = _orderMechanic.SelectedItem as Mechanic,
+            Status = _orderStatus.SelectedItem?.ToString() ?? OrderStatus.New,
+            Cost = Decimal(_orderCost.Text),
+            PaymentMethod = _orderPayment.SelectedItem?.ToString() ?? PaymentMethod.Cash
+        };
+    }
+
+    private RepairWorkDetails ReadRepairWorkDetails()
+    {
+        return new RepairWorkDetails
+        {
+            Name = _workName.Text ?? "",
+            Hours = Double(_workHours.Text),
+            Cost = Decimal(_workCost.Text)
+        };
+    }
+
+    private PartDetails ReadPartDetails()
+    {
+        return new PartDetails
+        {
+            Name = _partName.Text ?? "",
+            Article = _partArticle.Text ?? "",
+            Price = Decimal(_partPrice.Text),
+            Stock = Int(_partStock.Text)
+        };
+    }
+
+    private MechanicDetails ReadMechanicDetails()
+    {
+        return new MechanicDetails
+        {
+            Name = _mechanicName.Text ?? "",
+            Specialization = _mechanicSpec.Text ?? "",
+            HourRate = Decimal(_mechanicRate.Text)
         };
     }
 

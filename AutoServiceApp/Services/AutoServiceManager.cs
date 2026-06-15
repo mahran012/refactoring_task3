@@ -185,17 +185,36 @@ public class AutoServiceManager
 
     public Mechanic AddMechanic(string name, string specialization, decimal hourRate)
     {
-        var m = new Mechanic { Name = name, Specialization = specialization, HourRate = hourRate };
-        Mechanics.Add(m);
-        SaveAll();
-        return m;
+        return AddMechanic(new MechanicDetails
+        {
+            Name = name,
+            Specialization = specialization,
+            HourRate = hourRate
+        });
     }
 
-    public void UpdateMechanic(Mechanic m, string name, string specialization, decimal hourRate)
+    public Mechanic AddMechanic(MechanicDetails details)
     {
-        m.Name = name;
-        m.Specialization = specialization;
-        m.HourRate = hourRate;
+        var mechanic = new Mechanic();
+        details.ApplyTo(mechanic);
+        Mechanics.Add(mechanic);
+        SaveAll();
+        return mechanic;
+    }
+
+    public void UpdateMechanic(Mechanic mechanic, string name, string specialization, decimal hourRate)
+    {
+        UpdateMechanic(mechanic, new MechanicDetails
+        {
+            Name = name,
+            Specialization = specialization,
+            HourRate = hourRate
+        });
+    }
+
+    public void UpdateMechanic(Mechanic mechanic, MechanicDetails details)
+    {
+        details.ApplyTo(mechanic);
         SaveAll();
     }
 
@@ -212,18 +231,38 @@ public class AutoServiceManager
 
     public Part AddPart(string name, string article, decimal price, int stock)
     {
-        var p = new Part { Name = name, Article = article, Price = price, Stock = stock };
-        Parts.Add(p);
+        return AddPart(new PartDetails
+        {
+            Name = name,
+            Article = article,
+            Price = price,
+            Stock = stock
+        });
+    }
+
+    public Part AddPart(PartDetails details)
+    {
+        var part = new Part();
+        details.ApplyTo(part);
+        Parts.Add(part);
         SaveAll();
-        return p;
+        return part;
     }
 
     public void UpdatePart(Part part, string name, string article, decimal price, int stock)
     {
-        part.Name = name;
-        part.Article = article;
-        part.Price = price;
-        part.Stock = stock;
+        UpdatePart(part, new PartDetails
+        {
+            Name = name,
+            Article = article,
+            Price = price,
+            Stock = stock
+        });
+    }
+
+    public void UpdatePart(Part part, PartDetails details)
+    {
+        details.ApplyTo(part);
         SaveAll();
     }
 
@@ -235,41 +274,68 @@ public class AutoServiceManager
 
     public RepairOrder CreateOrder(Customer? customer, Car? car, string description, Mechanic? mechanic, string status, string paymentMethod)
     {
+        return CreateOrder(new RepairOrderDetails
+        {
+            Customer = customer,
+            Car = car,
+            Description = description,
+            Mechanic = mechanic,
+            Status = status,
+            PaymentMethod = paymentMethod
+        });
+    }
+
+    public RepairOrder CreateOrder(RepairOrderDetails details)
+    {
         var order = new RepairOrder
         {
             OrderNumber = "RO-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"),
-            CustomerId = customer?.Id ?? "",
-            CarId = car?.Id ?? "",
-            Customer = customer,
-            Car = car,
-            ProblemDescription = description,
-            AssignedMechanicId = mechanic?.Id ?? "",
-            AssignedMechanic = mechanic,
-            Status = status,
-            PaymentMethod = paymentMethod,
-            Cost = 0
+            CustomerId = details.Customer?.Id ?? "",
+            CarId = details.Car?.Id ?? "",
+            Customer = details.Customer,
+            Car = details.Car,
+            ProblemDescription = details.Description,
+            AssignedMechanicId = details.Mechanic?.Id ?? "",
+            AssignedMechanic = details.Mechanic,
+            Status = details.Status,
+            PaymentMethod = details.PaymentMethod,
+            Cost = details.Cost
         };
-        order.StatusHistory.Add($"{DateTime.Now:g}: order created with status {status}");
+        order.StatusHistory.Add($"{DateTime.Now:g}: order created with status {details.Status}");
         Orders.Add(order);
-        if (mechanic != null)
-            mechanic.AssignedOrderIds.Add(order.Id);
+        if (details.Mechanic != null)
+            details.Mechanic.AssignedOrderIds.Add(order.Id);
         SaveAll();
         return order;
     }
 
     public void UpdateOrder(RepairOrder order, Customer? customer, Car? car, string description, Mechanic? mechanic, string status, decimal cost, string paymentMethod)
     {
-        order.CustomerId = customer?.Id ?? "";
-        order.CarId = car?.Id ?? "";
-        order.Customer = customer;
-        order.Car = car;
-        order.ProblemDescription = description;
-        order.AssignedMechanicId = mechanic?.Id ?? "";
-        order.AssignedMechanic = mechanic;
-        order.PaymentMethod = paymentMethod;
-        order.Cost = cost;
-        if (order.Status != status)
-            ChangeOrderStatus(order, status, NotificationType.Both);
+        UpdateOrder(order, new RepairOrderDetails
+        {
+            Customer = customer,
+            Car = car,
+            Description = description,
+            Mechanic = mechanic,
+            Status = status,
+            Cost = cost,
+            PaymentMethod = paymentMethod
+        });
+    }
+
+    public void UpdateOrder(RepairOrder order, RepairOrderDetails details)
+    {
+        order.CustomerId = details.Customer?.Id ?? "";
+        order.CarId = details.Car?.Id ?? "";
+        order.Customer = details.Customer;
+        order.Car = details.Car;
+        order.ProblemDescription = details.Description;
+        order.AssignedMechanicId = details.Mechanic?.Id ?? "";
+        order.AssignedMechanic = details.Mechanic;
+        order.PaymentMethod = details.PaymentMethod;
+        order.Cost = details.Cost;
+        if (order.Status != details.Status)
+            ChangeOrderStatus(order, details.Status, NotificationType.Both);
         RelinkEverything();
         SaveAll();
     }
@@ -287,8 +353,17 @@ public class AutoServiceManager
 
     public void AddWorkToOrder(RepairOrder order, string name, double hours, decimal cost)
     {
-        var work = new RepairWork { Name = name, Hours = hours, Cost = cost };
-        order.Works.Add(work);
+        AddWorkToOrder(order, new RepairWorkDetails
+        {
+            Name = name,
+            Hours = hours,
+            Cost = cost
+        });
+    }
+
+    public void AddWorkToOrder(RepairOrder order, RepairWorkDetails details)
+    {
+        order.Works.Add(details.ToRepairWork());
         order.Cost = CalculateOrderCost(order, false, order.PaymentMethod);
         SaveAll();
     }
