@@ -10,6 +10,22 @@ namespace AutoServiceApp;
 
 public partial class MainWindow : Window
 {
+    private const double HomePanelSpacing = 12;
+    private const double DefaultMarginSize = 8;
+    private const double HomeHeaderFontSize = 24;
+    private const double FormSectionTopMargin = 12;
+    private const double NotificationLogMinHeight = 420;
+    private const double OrderFormColumnWidth = 420;
+    private const double OrderListHeight = 260;
+    private const double OrderWorkListHeight = 120;
+    private const double MechanicOrdersMinHeight = 200;
+    private const double ReportTextMinHeight = 600;
+    private const double DefaultLeftColumnWidth = 360;
+    private const double FormSpacing = 7;
+    private const double ButtonMinWidth = 90;
+    private const int DefaultReportMonthsBack = -1;
+    private const int MinimumPartQuantity = 1;
+
     public AutoServiceManager Manager { get; set; } = new();
 
     private ListBox _customerList = new();
@@ -95,11 +111,11 @@ public partial class MainWindow : Window
 
     private Control BuildHomeTab()
     {
-        var panel = new StackPanel { Spacing = 12, Margin = new Avalonia.Thickness(8) };
-        panel.Children.Add(new TextBlock { Text = "Auto service: training management system", FontSize = 24 });
+        var panel = new StackPanel { Spacing = HomePanelSpacing, Margin = new Avalonia.Thickness(DefaultMarginSize) };
+        panel.Children.Add(new TextBlock { Text = "Auto service: training management system", FontSize = HomeHeaderFontSize });
         panel.Children.Add(new TextBlock { Text = "Data is automatically loaded from and saved to JSON files in the user profile.", TextWrapping = Avalonia.Media.TextWrapping.Wrap });
         panel.Children.Add(new TextBlock { Text = "Notification log" });
-        _notificationLog = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = 420 };
+        _notificationLog = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = NotificationLogMinHeight };
         panel.Children.Add(_notificationLog);
         return new ScrollViewer { Content = panel };
     }
@@ -117,8 +133,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "Email", _customerEmail);
         AddLabeled(form, "Address", _customerAddress);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddCustomer(_customerName.Text ?? "", _customerPhone.Text ?? "", _customerEmail.Text ?? "", _customerAddress.Text ?? ""); ClearCustomerForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_customerList.SelectedItem is Customer c) { Manager.UpdateCustomer(c, _customerName.Text ?? "", _customerPhone.Text ?? "", _customerEmail.Text ?? "", _customerAddress.Text ?? ""); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.AddCustomer(ReadCustomerContactDetails()); ClearCustomerForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_customerList.SelectedItem is Customer c) { Manager.UpdateCustomer(c, ReadCustomerContactDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_customerList.SelectedItem is Customer c) { _customerList.ItemsSource = null; Manager.DeleteCustomer(c); ClearCustomerForm(); RefreshAll(); } })));
         Grid.SetColumn(form, 0);
         grid.Children.Add(form);
@@ -158,8 +174,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "License plate", _carLicense);
         AddLabeled(form, "Mileage", _carMileage);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddCar(_carCustomer.SelectedItem as Customer, _carMake.Text ?? "", _carModel.Text ?? "", Int(_carYear.Text), _carVin.Text ?? "", Int(_carMileage.Text), _carLicense.Text ?? ""); ClearCarForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_carList.SelectedItem is Car car) { Manager.UpdateCar(car, _carCustomer.SelectedItem as Customer, _carMake.Text ?? "", _carModel.Text ?? "", Int(_carYear.Text), _carVin.Text ?? "", Int(_carMileage.Text), _carLicense.Text ?? ""); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.AddCar(_carCustomer.SelectedItem as Customer, ReadVehicleDetails()); ClearCarForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_carList.SelectedItem is Car car) { Manager.UpdateCar(car, _carCustomer.SelectedItem as Customer, ReadVehicleDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_carList.SelectedItem is Car car) { _carList.ItemsSource = null; Manager.DeleteCar(car); ClearCarForm(); RefreshAll(); } })));
         Grid.SetColumn(form, 0);
         grid.Children.Add(form);
@@ -168,7 +184,7 @@ public partial class MainWindow : Window
         {
             if (_carList.SelectedItem is Car car)
             {
-                _carCustomer.SelectedItem = Manager.Customers.FirstOrDefault(x => x.Id == car.CustomerId);
+                _carCustomer.SelectedItem = Manager.GetOwnerForCar(car);
                 _carMake.Text = car.Make;
                 _carModel.Text = car.Model;
                 _carYear.Text = car.Year.ToString();
@@ -184,13 +200,13 @@ public partial class MainWindow : Window
 
     private Control BuildOrdersTab()
     {
-        var grid = TwoColumnGrid(420);
+        var grid = TwoColumnGrid(OrderFormColumnWidth);
         var form = FormPanel();
         _orderCustomer = new ComboBox { PlaceholderText = "Customer" };
         _orderCar = new ComboBox { PlaceholderText = "Car" };
         _orderMechanic = new ComboBox { PlaceholderText = "Mechanic" };
-        _orderStatus = new ComboBox { ItemsSource = new[] { "New", "Diagnostics", "In Progress", "Waiting for Parts", "Ready", "Released" }, SelectedIndex = 0 };
-        _orderPayment = new ComboBox { ItemsSource = new[] { "cash", "card", "transfer" }, SelectedIndex = 0 };
+        _orderStatus = new ComboBox { ItemsSource = OrderStatus.All, SelectedIndex = 0 };
+        _orderPayment = new ComboBox { ItemsSource = PaymentMethod.All, SelectedIndex = 0 };
         _orderProblem = Box("Problem description");
         _orderCost = Box("Cost");
         AddLabeled(form, "Customer", _orderCustomer);
@@ -201,31 +217,31 @@ public partial class MainWindow : Window
         AddLabeled(form, "Description", _orderProblem);
         AddLabeled(form, "Cost", _orderCost);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.CreateOrder(_orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? "New", _orderPayment.SelectedItem?.ToString() ?? "cash"); ClearOrderForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, _orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? "New", Decimal(_orderCost.Text), _orderPayment.SelectedItem?.ToString() ?? "cash"); RefreshAll(); } }),
-            ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.Orders.Remove(o); Manager.SaveAll(); ClearOrderForm(); RefreshAll(); } })));
+            ("Create", (_, _) => { Manager.CreateOrder(ReadRepairOrderDetails()); ClearOrderForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, ReadRepairOrderDetails()); RefreshAll(); } }),
+            ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.DeleteOrder(o); ClearOrderForm(); RefreshAll(); } })));
 
-        form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, 12, 0, 0) });
+        form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });
         _workName = Box("Work name");
         _workHours = Box("Hours");
         _workCost = Box("Cost");
         AddLabeled(form, "Work", _workName);
         AddLabeled(form, "Hours", _workHours);
         AddLabeled(form, "Price", _workCost);
-        form.Children.Add(Button("Add work", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.AddWorkToOrder(o, _workName.Text ?? "", Double(_workHours.Text), Decimal(_workCost.Text)); RefreshAll(); SelectOrder(o); } }));
+        form.Children.Add(Button("Add work", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.AddWorkToOrder(o, ReadRepairWorkDetails()); RefreshAll(); SelectOrder(o); } }));
 
-        form.Children.Add(new TextBlock { Text = "Use part", Margin = new Avalonia.Thickness(0, 12, 0, 0) });
+        form.Children.Add(new TextBlock { Text = "Use part", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });
         _usePartCombo = new ComboBox { PlaceholderText = "Part" };
         _usePartQty = Box("Quantity");
         AddLabeled(form, "Part", _usePartCombo);
         AddLabeled(form, "Qty", _usePartQty);
-        form.Children.Add(Button("Use", (_, _) => { if (_orderList.SelectedItem is RepairOrder o && _usePartCombo.SelectedItem is Part p) { Manager.UsePartForOrder(o, p, Math.Max(1, Int(_usePartQty.Text))); RefreshAll(); SelectOrder(o); } }));
+        form.Children.Add(Button("Use", (_, _) => { if (_orderList.SelectedItem is RepairOrder o && _usePartCombo.SelectedItem is Part p) { Manager.UsePartForOrder(o, p, Math.Max(MinimumPartQuantity, Int(_usePartQty.Text))); RefreshAll(); SelectOrder(o); } }));
         Grid.SetColumn(form, 0);
         grid.Children.Add(new ScrollViewer { Content = form });
 
         var right = new Grid();
-        right.RowDefinitions.Add(new RowDefinition(new GridLength(260)));
-        right.RowDefinitions.Add(new RowDefinition(new GridLength(120)));
+        right.RowDefinitions.Add(new RowDefinition(new GridLength(OrderListHeight)));
+        right.RowDefinitions.Add(new RowDefinition(new GridLength(OrderWorkListHeight)));
         right.RowDefinitions.Add(new RowDefinition(GridLength.Star));
         _orderList = new ListBox();
         _orderList.SelectionChanged += (_, _) =>
@@ -258,8 +274,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "Price", _partPrice);
         AddLabeled(form, "Stock", _partStock);
         form.Children.Add(RowButtons(
-            ("Add", (_, _) => { Manager.AddPart(_partName.Text ?? "", _partArticle.Text ?? "", Decimal(_partPrice.Text), Int(_partStock.Text)); ClearPartForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_partList.SelectedItem is Part p) { Manager.UpdatePart(p, _partName.Text ?? "", _partArticle.Text ?? "", Decimal(_partPrice.Text), Int(_partStock.Text)); RefreshAll(); } }),
+            ("Add", (_, _) => { Manager.AddPart(ReadPartDetails()); ClearPartForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_partList.SelectedItem is Part p) { Manager.UpdatePart(p, ReadPartDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_partList.SelectedItem is Part p) { _partList.ItemsSource = null; Manager.DeletePart(p); ClearPartForm(); RefreshAll(); } })));
         Grid.SetColumn(form, 0);
         grid.Children.Add(form);
@@ -286,13 +302,13 @@ public partial class MainWindow : Window
         _mechanicName = Box("Name");
         _mechanicSpec = Box("Specialization");
         _mechanicRate = Box("Rate");
-        _mechanicOrders = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = 200 };
+        _mechanicOrders = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = MechanicOrdersMinHeight };
         AddLabeled(form, "Name", _mechanicName);
         AddLabeled(form, "Specialization", _mechanicSpec);
         AddLabeled(form, "Rate", _mechanicRate);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddMechanic(_mechanicName.Text ?? "", _mechanicSpec.Text ?? "", Decimal(_mechanicRate.Text)); ClearMechanicForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { Manager.UpdateMechanic(m, _mechanicName.Text ?? "", _mechanicSpec.Text ?? "", Decimal(_mechanicRate.Text)); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.AddMechanic(ReadMechanicDetails()); ClearMechanicForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { Manager.UpdateMechanic(m, ReadMechanicDetails()); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { _mechanicList.ItemsSource = null; Manager.DeleteMechanic(m); ClearMechanicForm(); RefreshAll(); } })));
         form.Children.Add(new TextBlock { Text = "Assigned orders" });
         form.Children.Add(_mechanicOrders);
@@ -316,27 +332,27 @@ public partial class MainWindow : Window
 
     private Control BuildReportsTab()
     {
-        var panel = new StackPanel { Spacing = 8, Margin = new Avalonia.Thickness(8) };
-        var from = Box(DateTime.Today.AddMonths(-1).ToShortDateString());
+        var panel = new StackPanel { Spacing = DefaultMarginSize, Margin = new Avalonia.Thickness(DefaultMarginSize) };
+        var from = Box(DateTime.Today.AddMonths(DefaultReportMonthsBack).ToShortDateString());
         var to = Box(DateTime.Today.ToShortDateString());
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = DefaultMarginSize };
         row.Children.Add(new TextBlock { Text = "From", VerticalAlignment = VerticalAlignment.Center });
         row.Children.Add(from);
         row.Children.Add(new TextBlock { Text = "To", VerticalAlignment = VerticalAlignment.Center });
         row.Children.Add(to);
         row.Children.Add(Button("Build", (_, _) =>
         {
-            var f = DateTime.TryParse(from.Text, out var fd) ? fd : DateTime.Today.AddMonths(-1);
+            var f = DateTime.TryParse(from.Text, out var fd) ? fd : DateTime.Today.AddMonths(DefaultReportMonthsBack);
             var t = DateTime.TryParse(to.Text, out var td) ? td : DateTime.Today;
             _reportText.Text = Manager.BuildReports(f, t);
         }));
         panel.Children.Add(row);
-        _reportText = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = 600 };
+        _reportText = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = ReportTextMinHeight };
         panel.Children.Add(_reportText);
         return panel;
     }
 
-    private Grid TwoColumnGrid(double left = 360)
+    private Grid TwoColumnGrid(double left = DefaultLeftColumnWidth)
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(left)));
@@ -344,20 +360,20 @@ public partial class MainWindow : Window
         return grid;
     }
 
-    private StackPanel FormPanel() => new() { Spacing = 7, Margin = new Avalonia.Thickness(8) };
+    private StackPanel FormPanel() => new() { Spacing = FormSpacing, Margin = new Avalonia.Thickness(DefaultMarginSize) };
 
     private TextBox Box(string watermark) => new() { Watermark = watermark };
 
     private Button Button(string text, EventHandler<RoutedEventArgs> handler)
     {
-        var b = new Button { Content = text, MinWidth = 90 };
+        var b = new Button { Content = text, MinWidth = ButtonMinWidth };
         b.Click += handler;
         return b;
     }
 
     private StackPanel RowButtons(params (string Text, EventHandler<RoutedEventArgs> Handler)[] buttons)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Avalonia.Thickness(0, 8, 0, 0) };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = DefaultMarginSize, Margin = new Avalonia.Thickness(0, DefaultMarginSize, 0, 0) };
         foreach (var b in buttons)
             row.Children.Add(Button(b.Text, b.Handler));
         return row;
@@ -388,14 +404,14 @@ public partial class MainWindow : Window
         _orderMechanic.ItemsSource = Manager.Mechanics.ToList();
         _usePartCombo.ItemsSource = Manager.Parts.ToList();
         _notificationLog.Text = string.Join(Environment.NewLine, Manager.Notifications.Concat(Manager.SmsNotifier.SentMessages).Concat(Manager.EmailSender.Log));
-        _reportText.Text = Manager.BuildReports(DateTime.Today.AddMonths(-1), DateTime.Today);
+        _reportText.Text = Manager.BuildReports(DateTime.Today.AddMonths(DefaultReportMonthsBack), DateTime.Today);
     }
 
     private void FillOrder(RepairOrder o)
     {
-        _orderCustomer.SelectedItem = Manager.Customers.FirstOrDefault(x => x.Id == o.CustomerId);
-        _orderCar.SelectedItem = Manager.Cars.FirstOrDefault(x => x.Id == o.CarId);
-        _orderMechanic.SelectedItem = Manager.Mechanics.FirstOrDefault(x => x.Id == o.AssignedMechanicId);
+        _orderCustomer.SelectedItem = Manager.GetCustomerForOrder(o);
+        _orderCar.SelectedItem = Manager.GetCarForOrder(o);
+        _orderMechanic.SelectedItem = Manager.GetMechanicForOrder(o);
         _orderStatus.SelectedItem = o.Status;
         _orderPayment.SelectedItem = o.PaymentMethod;
         _orderProblem.Text = o.ProblemDescription;
@@ -409,6 +425,75 @@ public partial class MainWindow : Window
     {
         _orderList.SelectedItem = o;
         FillOrder(o);
+    }
+
+    private CustomerContactDetails ReadCustomerContactDetails()
+    {
+        return new CustomerContactDetails
+        {
+            Name = _customerName.Text ?? "",
+            Phone = _customerPhone.Text ?? "",
+            Email = _customerEmail.Text ?? "",
+            Address = _customerAddress.Text ?? ""
+        };
+    }
+
+    private VehicleDetails ReadVehicleDetails()
+    {
+        return new VehicleDetails
+        {
+            Make = _carMake.Text ?? "",
+            Model = _carModel.Text ?? "",
+            Year = Int(_carYear.Text),
+            Vin = _carVin.Text ?? "",
+            Mileage = Int(_carMileage.Text),
+            LicensePlate = _carLicense.Text ?? ""
+        };
+    }
+
+    private RepairOrderDetails ReadRepairOrderDetails()
+    {
+        return new RepairOrderDetails
+        {
+            Customer = _orderCustomer.SelectedItem as Customer,
+            Car = _orderCar.SelectedItem as Car,
+            Description = _orderProblem.Text ?? "",
+            Mechanic = _orderMechanic.SelectedItem as Mechanic,
+            Status = _orderStatus.SelectedItem?.ToString() ?? OrderStatus.New,
+            Cost = Decimal(_orderCost.Text),
+            PaymentMethod = _orderPayment.SelectedItem?.ToString() ?? PaymentMethod.Cash
+        };
+    }
+
+    private RepairWorkDetails ReadRepairWorkDetails()
+    {
+        return new RepairWorkDetails
+        {
+            Name = _workName.Text ?? "",
+            Hours = Double(_workHours.Text),
+            Cost = Decimal(_workCost.Text)
+        };
+    }
+
+    private PartDetails ReadPartDetails()
+    {
+        return new PartDetails
+        {
+            Name = _partName.Text ?? "",
+            Article = _partArticle.Text ?? "",
+            Price = Decimal(_partPrice.Text),
+            Stock = Int(_partStock.Text)
+        };
+    }
+
+    private MechanicDetails ReadMechanicDetails()
+    {
+        return new MechanicDetails
+        {
+            Name = _mechanicName.Text ?? "",
+            Specialization = _mechanicSpec.Text ?? "",
+            HourRate = Decimal(_mechanicRate.Text)
+        };
     }
 
     private void ClearCustomerForm() => (_customerName.Text, _customerPhone.Text, _customerEmail.Text, _customerAddress.Text) = ("", "", "", "");
