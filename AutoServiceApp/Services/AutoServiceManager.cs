@@ -54,6 +54,14 @@ public class AutoServiceManager
         MechanicStore.Save("mechanics.json", _mechanics);
     }
 
+    private void PersistDomainChange(bool refreshRelationships = false)
+    {
+        if (refreshRelationships)
+            RelinkEverything();
+
+        SaveAll();
+    }
+
     public void RelinkEverything()
     {
         foreach (var c in _customers)
@@ -89,7 +97,7 @@ public class AutoServiceManager
         var customer = new Customer();
         customer.UpdateContact(contactDetails);
         _customers.Add(customer);
-        SaveAll();
+        PersistDomainChange();
         return customer;
     }
 
@@ -109,7 +117,7 @@ public class AutoServiceManager
         customer.UpdateContact(contactDetails);
         foreach (var order in _orders.Where(x => x.CustomerId == customer.Id))
             order.Customer = customer;
-        SaveAll();
+        PersistDomainChange();
     }
 
     public void DeleteCustomer(Customer customer)
@@ -119,7 +127,7 @@ public class AutoServiceManager
             _cars.Remove(car);
         foreach (var order in _orders.Where(x => x.CustomerId == customer.Id).ToList())
             _orders.Remove(order);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public Car AddCar(Customer? owner, string make, string model, int year, string vin, int mileage, string licensePlate)
@@ -142,7 +150,7 @@ public class AutoServiceManager
         car.UpdateVehicle(vehicleDetails);
         _cars.Add(car);
         owner?.AddCar(car);
-        SaveAll();
+        PersistDomainChange();
         return car;
     }
 
@@ -163,8 +171,7 @@ public class AutoServiceManager
     {
         car.AssignOwner(owner);
         car.UpdateVehicle(vehicleDetails);
-        RelinkEverything();
-        SaveAll();
+        PersistDomainChange(refreshRelationships: true);
     }
 
     public void DeleteCar(Car car)
@@ -174,7 +181,7 @@ public class AutoServiceManager
             c.RemoveCar(car);
         foreach (var order in _orders.Where(x => x.CarId == car.Id).ToList())
             _orders.Remove(order);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public Mechanic AddMechanic(string name, string specialization, decimal hourRate)
@@ -192,7 +199,7 @@ public class AutoServiceManager
         var mechanic = new Mechanic();
         mechanic.UpdateProfile(details);
         _mechanics.Add(mechanic);
-        SaveAll();
+        PersistDomainChange();
         return mechanic;
     }
 
@@ -209,7 +216,7 @@ public class AutoServiceManager
     public void UpdateMechanic(Mechanic mechanic, MechanicDetails details)
     {
         mechanic.UpdateProfile(details);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public void DeleteMechanic(Mechanic m)
@@ -219,7 +226,7 @@ public class AutoServiceManager
         {
             order.AssignMechanic(null);
         }
-        SaveAll();
+        PersistDomainChange();
     }
 
     public Part AddPart(string name, string article, decimal price, int stock)
@@ -238,7 +245,7 @@ public class AutoServiceManager
         var part = new Part();
         part.UpdateDetails(details);
         _parts.Add(part);
-        SaveAll();
+        PersistDomainChange();
         return part;
     }
 
@@ -256,13 +263,13 @@ public class AutoServiceManager
     public void UpdatePart(Part part, PartDetails details)
     {
         part.UpdateDetails(details);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public void DeletePart(Part p)
     {
         _parts.Remove(p);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public RepairOrder CreateOrder(Customer? customer, Car? car, string description, Mechanic? mechanic, string status, string paymentMethod)
@@ -283,7 +290,7 @@ public class AutoServiceManager
         var order = RepairOrder.Create(details, "RO-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
         _orders.Add(order);
         details.Mechanic?.AssignOrder(order.Id);
-        SaveAll();
+        PersistDomainChange();
         return order;
     }
 
@@ -306,8 +313,7 @@ public class AutoServiceManager
         order.ApplyDetails(details);
         if (order.Status != details.Status)
             ChangeOrderStatus(order, details.Status, NotificationType.Both);
-        RelinkEverything();
-        SaveAll();
+        PersistDomainChange(refreshRelationships: true);
     }
 
     public void DeleteOrder(RepairOrder order)
@@ -315,7 +321,7 @@ public class AutoServiceManager
         _orders.Remove(order);
         foreach (var mechanic in _mechanics)
             mechanic.UnassignOrder(order.Id);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public void ChangeOrderStatus(RepairOrder order, string newStatus, string notificationType)
@@ -325,7 +331,7 @@ public class AutoServiceManager
             order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
         order.AssignedMechanic?.AssignOrder(order.Id);
         NotifyAboutStatus(order, notificationType);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public void AddWorkToOrder(RepairOrder order, string name, double hours, decimal cost)
@@ -342,7 +348,7 @@ public class AutoServiceManager
     {
         order.AddWork(details.ToRepairWork());
         order.Cost = CalculateOrderCost(order, false, order.PaymentMethod);
-        SaveAll();
+        PersistDomainChange();
     }
 
     public bool UsePartForOrder(RepairOrder order, Part part, int qty)
@@ -351,7 +357,7 @@ public class AutoServiceManager
             return false;
 
         order.AddPartUsage(part, qty, OrderCostCalculator.ImmediatePartUsageMarkup);
-        SaveAll();
+        PersistDomainChange();
         return true;
     }
 
@@ -449,6 +455,6 @@ public class AutoServiceManager
         AddPart("Brake pads", "BR-500", 3200, 5);
         var order = CreateOrder(c1, car1, "Knock on startup, diagnostics required", m1, OrderStatus.Diagnostics, PaymentMethod.Card);
         AddWorkToOrder(order, "Computer diagnostics", 1.5, 2500);
-        SaveAll();
+        PersistDomainChange();
     }
 }
