@@ -7,6 +7,15 @@ namespace AutoServiceApp.Services;
 
 public class AutoServiceManager
 {
+    private const decimal ImmediatePartUsageMarkup = 1.50m;
+    private const decimal CalculatedPartMarkup = 1.20m;
+    private const decimal CardPaymentFeeRate = 0.05m;
+    private const int LoyalCustomerCarCountThreshold = 2;
+    private const decimal LoyalCustomerDiscountRate = 0.10m;
+    private const decimal FinalReadyOrderFee = 500m;
+    private const decimal LargeOrderDiscountThreshold = 10000m;
+    private const decimal LargeOrderDiscountRate = 0.15m;
+
     public List<Customer> Customers { get; set; } = new();
     public List<Car> Cars { get; set; } = new();
     public List<RepairOrder> Orders { get; set; } = new();
@@ -262,7 +271,7 @@ public class AutoServiceManager
         part.Stock -= qty;
         for (var i = 0; i < qty; i++)
             order.UsedPartIds.Add(part.Id);
-        order.Cost += part.Price * qty * 1.50m;
+        order.Cost += part.Price * qty * ImmediatePartUsageMarkup;
         order.StatusHistory.Add($"{DateTime.Now:g}: part used {part.Name} x{qty}");
         SaveAll();
         return true;
@@ -271,16 +280,16 @@ public class AutoServiceManager
     public decimal CalculateOrderCost(RepairOrder order, bool final, string paymentMethod)
     {
         var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
-        var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * 1.20m);
+        var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * CalculatedPartMarkup);
         var result = works + parts;
         if (paymentMethod == "card")
-            result += result * 0.05m;
-        if (order.Customer != null && order.Customer.Cars.Count > 2)
-            result -= result * 0.10m;
+            result += result * CardPaymentFeeRate;
+        if (order.Customer != null && order.Customer.Cars.Count > LoyalCustomerCarCountThreshold)
+            result -= result * LoyalCustomerDiscountRate;
         if (final && order.Status == "Ready")
-            result += 500;
-        if (result > 10000)
-            _tempDiscount = result * 0.15m;
+            result += FinalReadyOrderFee;
+        if (result > LargeOrderDiscountThreshold)
+            _tempDiscount = result * LargeOrderDiscountRate;
         else
             _tempDiscount = 0;
         return result - _tempDiscount;

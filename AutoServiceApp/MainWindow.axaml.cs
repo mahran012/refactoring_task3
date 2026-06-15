@@ -10,6 +10,22 @@ namespace AutoServiceApp;
 
 public partial class MainWindow : Window
 {
+    private const double HomePanelSpacing = 12;
+    private const double DefaultMarginSize = 8;
+    private const double HomeHeaderFontSize = 24;
+    private const double FormSectionTopMargin = 12;
+    private const double NotificationLogMinHeight = 420;
+    private const double OrderFormColumnWidth = 420;
+    private const double OrderListHeight = 260;
+    private const double OrderWorkListHeight = 120;
+    private const double MechanicOrdersMinHeight = 200;
+    private const double ReportTextMinHeight = 600;
+    private const double DefaultLeftColumnWidth = 360;
+    private const double FormSpacing = 7;
+    private const double ButtonMinWidth = 90;
+    private const int DefaultReportMonthsBack = -1;
+    private const int MinimumPartQuantity = 1;
+
     public AutoServiceManager Manager { get; set; } = new();
 
     private ListBox _customerList = new();
@@ -95,11 +111,11 @@ public partial class MainWindow : Window
 
     private Control BuildHomeTab()
     {
-        var panel = new StackPanel { Spacing = 12, Margin = new Avalonia.Thickness(8) };
-        panel.Children.Add(new TextBlock { Text = "Auto service: training management system", FontSize = 24 });
+        var panel = new StackPanel { Spacing = HomePanelSpacing, Margin = new Avalonia.Thickness(DefaultMarginSize) };
+        panel.Children.Add(new TextBlock { Text = "Auto service: training management system", FontSize = HomeHeaderFontSize });
         panel.Children.Add(new TextBlock { Text = "Data is automatically loaded from and saved to JSON files in the user profile.", TextWrapping = Avalonia.Media.TextWrapping.Wrap });
         panel.Children.Add(new TextBlock { Text = "Notification log" });
-        _notificationLog = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = 420 };
+        _notificationLog = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = NotificationLogMinHeight };
         panel.Children.Add(_notificationLog);
         return new ScrollViewer { Content = panel };
     }
@@ -184,7 +200,7 @@ public partial class MainWindow : Window
 
     private Control BuildOrdersTab()
     {
-        var grid = TwoColumnGrid(420);
+        var grid = TwoColumnGrid(OrderFormColumnWidth);
         var form = FormPanel();
         _orderCustomer = new ComboBox { PlaceholderText = "Customer" };
         _orderCar = new ComboBox { PlaceholderText = "Car" };
@@ -205,7 +221,7 @@ public partial class MainWindow : Window
             ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, _orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? "New", Decimal(_orderCost.Text), _orderPayment.SelectedItem?.ToString() ?? "cash"); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.Orders.Remove(o); Manager.SaveAll(); ClearOrderForm(); RefreshAll(); } })));
 
-        form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, 12, 0, 0) });
+        form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });
         _workName = Box("Work name");
         _workHours = Box("Hours");
         _workCost = Box("Cost");
@@ -214,18 +230,18 @@ public partial class MainWindow : Window
         AddLabeled(form, "Price", _workCost);
         form.Children.Add(Button("Add work", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.AddWorkToOrder(o, _workName.Text ?? "", Double(_workHours.Text), Decimal(_workCost.Text)); RefreshAll(); SelectOrder(o); } }));
 
-        form.Children.Add(new TextBlock { Text = "Use part", Margin = new Avalonia.Thickness(0, 12, 0, 0) });
+        form.Children.Add(new TextBlock { Text = "Use part", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });
         _usePartCombo = new ComboBox { PlaceholderText = "Part" };
         _usePartQty = Box("Quantity");
         AddLabeled(form, "Part", _usePartCombo);
         AddLabeled(form, "Qty", _usePartQty);
-        form.Children.Add(Button("Use", (_, _) => { if (_orderList.SelectedItem is RepairOrder o && _usePartCombo.SelectedItem is Part p) { Manager.UsePartForOrder(o, p, Math.Max(1, Int(_usePartQty.Text))); RefreshAll(); SelectOrder(o); } }));
+        form.Children.Add(Button("Use", (_, _) => { if (_orderList.SelectedItem is RepairOrder o && _usePartCombo.SelectedItem is Part p) { Manager.UsePartForOrder(o, p, Math.Max(MinimumPartQuantity, Int(_usePartQty.Text))); RefreshAll(); SelectOrder(o); } }));
         Grid.SetColumn(form, 0);
         grid.Children.Add(new ScrollViewer { Content = form });
 
         var right = new Grid();
-        right.RowDefinitions.Add(new RowDefinition(new GridLength(260)));
-        right.RowDefinitions.Add(new RowDefinition(new GridLength(120)));
+        right.RowDefinitions.Add(new RowDefinition(new GridLength(OrderListHeight)));
+        right.RowDefinitions.Add(new RowDefinition(new GridLength(OrderWorkListHeight)));
         right.RowDefinitions.Add(new RowDefinition(GridLength.Star));
         _orderList = new ListBox();
         _orderList.SelectionChanged += (_, _) =>
@@ -286,7 +302,7 @@ public partial class MainWindow : Window
         _mechanicName = Box("Name");
         _mechanicSpec = Box("Specialization");
         _mechanicRate = Box("Rate");
-        _mechanicOrders = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = 200 };
+        _mechanicOrders = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = MechanicOrdersMinHeight };
         AddLabeled(form, "Name", _mechanicName);
         AddLabeled(form, "Specialization", _mechanicSpec);
         AddLabeled(form, "Rate", _mechanicRate);
@@ -316,27 +332,27 @@ public partial class MainWindow : Window
 
     private Control BuildReportsTab()
     {
-        var panel = new StackPanel { Spacing = 8, Margin = new Avalonia.Thickness(8) };
-        var from = Box(DateTime.Today.AddMonths(-1).ToShortDateString());
+        var panel = new StackPanel { Spacing = DefaultMarginSize, Margin = new Avalonia.Thickness(DefaultMarginSize) };
+        var from = Box(DateTime.Today.AddMonths(DefaultReportMonthsBack).ToShortDateString());
         var to = Box(DateTime.Today.ToShortDateString());
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = DefaultMarginSize };
         row.Children.Add(new TextBlock { Text = "From", VerticalAlignment = VerticalAlignment.Center });
         row.Children.Add(from);
         row.Children.Add(new TextBlock { Text = "To", VerticalAlignment = VerticalAlignment.Center });
         row.Children.Add(to);
         row.Children.Add(Button("Build", (_, _) =>
         {
-            var f = DateTime.TryParse(from.Text, out var fd) ? fd : DateTime.Today.AddMonths(-1);
+            var f = DateTime.TryParse(from.Text, out var fd) ? fd : DateTime.Today.AddMonths(DefaultReportMonthsBack);
             var t = DateTime.TryParse(to.Text, out var td) ? td : DateTime.Today;
             _reportText.Text = Manager.BuildReports(f, t);
         }));
         panel.Children.Add(row);
-        _reportText = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = 600 };
+        _reportText = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = ReportTextMinHeight };
         panel.Children.Add(_reportText);
         return panel;
     }
 
-    private Grid TwoColumnGrid(double left = 360)
+    private Grid TwoColumnGrid(double left = DefaultLeftColumnWidth)
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(left)));
@@ -344,20 +360,20 @@ public partial class MainWindow : Window
         return grid;
     }
 
-    private StackPanel FormPanel() => new() { Spacing = 7, Margin = new Avalonia.Thickness(8) };
+    private StackPanel FormPanel() => new() { Spacing = FormSpacing, Margin = new Avalonia.Thickness(DefaultMarginSize) };
 
     private TextBox Box(string watermark) => new() { Watermark = watermark };
 
     private Button Button(string text, EventHandler<RoutedEventArgs> handler)
     {
-        var b = new Button { Content = text, MinWidth = 90 };
+        var b = new Button { Content = text, MinWidth = ButtonMinWidth };
         b.Click += handler;
         return b;
     }
 
     private StackPanel RowButtons(params (string Text, EventHandler<RoutedEventArgs> Handler)[] buttons)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Avalonia.Thickness(0, 8, 0, 0) };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = DefaultMarginSize, Margin = new Avalonia.Thickness(0, DefaultMarginSize, 0, 0) };
         foreach (var b in buttons)
             row.Children.Add(Button(b.Text, b.Handler));
         return row;
@@ -388,7 +404,7 @@ public partial class MainWindow : Window
         _orderMechanic.ItemsSource = Manager.Mechanics.ToList();
         _usePartCombo.ItemsSource = Manager.Parts.ToList();
         _notificationLog.Text = string.Join(Environment.NewLine, Manager.Notifications.Concat(Manager.SmsNotifier.SentMessages).Concat(Manager.EmailSender.Log));
-        _reportText.Text = Manager.BuildReports(DateTime.Today.AddMonths(-1), DateTime.Today);
+        _reportText.Text = Manager.BuildReports(DateTime.Today.AddMonths(DefaultReportMonthsBack), DateTime.Today);
     }
 
     private void FillOrder(RepairOrder o)
