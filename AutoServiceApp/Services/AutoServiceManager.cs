@@ -1,4 +1,3 @@
-using System.Text;
 using AutoServiceApp.Helpers;
 using AutoServiceApp.Models;
 using AutoServiceApp.Storage;
@@ -7,15 +6,6 @@ namespace AutoServiceApp.Services;
 
 public class AutoServiceManager
 {
-    private const decimal ImmediatePartUsageMarkup = 1.50m;
-    private const decimal CalculatedPartMarkup = 1.20m;
-    private const decimal CardPaymentFeeRate = 0.05m;
-    private const int LoyalCustomerCarCountThreshold = 2;
-    private const decimal LoyalCustomerDiscountRate = 0.10m;
-    private const decimal FinalReadyOrderFee = 500m;
-    private const decimal LargeOrderDiscountThreshold = 10000m;
-    private const decimal LargeOrderDiscountRate = 0.15m;
-
     private List<Customer> _customers = new();
     private List<Car> _cars = new();
     private List<RepairOrder> _orders = new();
@@ -40,6 +30,8 @@ public class AutoServiceManager
     public EmailSender EmailSender { get; set; } = new();
     public ReportService ReportService { get; set; } = new();
     public OrderStatusHelper StatusHelper { get; set; } = new();
+    public OrderCostCalculator OrderCostCalculator { get; set; } = new();
+    public OrderDetailsBuilder OrderDetailsBuilder { get; set; } = new();
 
     public void Load()
     {
@@ -358,42 +350,19 @@ public class AutoServiceManager
         if (!part.TryTakeFromStock(qty))
             return false;
 
-        order.AddPartUsage(part, qty, ImmediatePartUsageMarkup);
+        order.AddPartUsage(part, qty, OrderCostCalculator.ImmediatePartUsageMarkup);
         SaveAll();
         return true;
     }
 
     public decimal CalculateOrderCost(RepairOrder order, bool final, string paymentMethod)
     {
-        var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
-        var parts = order.UsedPartIds.Select(id => _parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * CalculatedPartMarkup);
-        var result = works + parts;
-        if (PaymentMethod.IsCard(paymentMethod))
-            result += result * CardPaymentFeeRate;
-        if (order.Customer != null && order.Customer.Cars.Count > LoyalCustomerCarCountThreshold)
-            result -= result * LoyalCustomerDiscountRate;
-        if (final && OrderStatus.IsReady(order.Status))
-            result += FinalReadyOrderFee;
-        var discount = result > LargeOrderDiscountThreshold
-            ? result * LargeOrderDiscountRate
-            : 0;
-        return result - discount;
+        return OrderCostCalculator.Calculate(order, _parts, final, paymentMethod);
     }
 
     public string BuildOrderDetails(RepairOrder order)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine(order.ToString());
-        sb.AppendLine(order.ProblemDescription);
-        sb.AppendLine("Works:");
-        foreach (var work in order.Works)
-            sb.AppendLine(" - " + work);
-        sb.AppendLine("History:");
-        foreach (var h in order.StatusHistory)
-            sb.AppendLine(" - " + h);
-        if (order.Customer?.Cars.Count > 0)
-            sb.AppendLine("First car owner phone: " + order.Customer.Cars[0].Owner?.Phone);
-        return sb.ToString();
+        return OrderDetailsBuilder.Build(order);
     }
 
     public string BuildReports(DateTime from, DateTime to)
