@@ -205,8 +205,8 @@ public partial class MainWindow : Window
         _orderCustomer = new ComboBox { PlaceholderText = "Customer" };
         _orderCar = new ComboBox { PlaceholderText = "Car" };
         _orderMechanic = new ComboBox { PlaceholderText = "Mechanic" };
-        _orderStatus = new ComboBox { ItemsSource = new[] { "New", "Diagnostics", "In Progress", "Waiting for Parts", "Ready", "Released" }, SelectedIndex = 0 };
-        _orderPayment = new ComboBox { ItemsSource = new[] { "cash", "card", "transfer" }, SelectedIndex = 0 };
+        _orderStatus = new ComboBox { ItemsSource = OrderStatus.All, SelectedIndex = 0 };
+        _orderPayment = new ComboBox { ItemsSource = PaymentMethod.All, SelectedIndex = 0 };
         _orderProblem = Box("Problem description");
         _orderCost = Box("Cost");
         AddLabeled(form, "Customer", _orderCustomer);
@@ -217,8 +217,8 @@ public partial class MainWindow : Window
         AddLabeled(form, "Description", _orderProblem);
         AddLabeled(form, "Cost", _orderCost);
         form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.CreateOrder(_orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? "New", _orderPayment.SelectedItem?.ToString() ?? "cash"); ClearOrderForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, _orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? "New", Decimal(_orderCost.Text), _orderPayment.SelectedItem?.ToString() ?? "cash"); RefreshAll(); } }),
+            ("Create", (_, _) => { Manager.CreateOrder(_orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? OrderStatus.New, _orderPayment.SelectedItem?.ToString() ?? PaymentMethod.Cash); ClearOrderForm(); RefreshAll(); }),
+            ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, _orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? OrderStatus.New, Decimal(_orderCost.Text), _orderPayment.SelectedItem?.ToString() ?? PaymentMethod.Cash); RefreshAll(); } }),
             ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.Orders.Remove(o); Manager.SaveAll(); ClearOrderForm(); RefreshAll(); } })));
 
         form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, FormSectionTopMargin, 0, 0) });

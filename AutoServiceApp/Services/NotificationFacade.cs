@@ -1,3 +1,5 @@
+using AutoServiceApp.Models;
+
 namespace AutoServiceApp.Services;
 
 public class NotificationFacade
@@ -13,9 +15,9 @@ public class NotificationFacade
 
     public void Notify(string type, string phone, string email, string title, string message)
     {
-        if (type == "sms")
+        if (NotificationType.IsSms(type))
             Sms.SendSms(phone, message);
-        else if (type == "email")
+        else if (NotificationType.IsEmail(type))
             Email.Send(email, title, message);
         else
         {

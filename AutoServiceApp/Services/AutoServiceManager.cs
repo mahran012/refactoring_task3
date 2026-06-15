@@ -233,7 +233,7 @@ public class AutoServiceManager
         order.PaymentMethod = paymentMethod;
         order.Cost = cost;
         if (order.Status != status)
-            ChangeOrderStatus(order, status, "both");
+            ChangeOrderStatus(order, status, NotificationType.Both);
         RelinkEverything();
         SaveAll();
     }
@@ -241,7 +241,7 @@ public class AutoServiceManager
     public void ChangeOrderStatus(RepairOrder order, string newStatus, string notificationType)
     {
         StatusHelper.MarkStatus(order, newStatus);
-        if (newStatus == "Ready")
+        if (OrderStatus.IsReady(newStatus))
             order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
         if (order.AssignedMechanic != null && !order.AssignedMechanic.AssignedOrderIds.Contains(order.Id))
             order.AssignedMechanic.AssignedOrderIds.Add(order.Id);
@@ -276,11 +276,11 @@ public class AutoServiceManager
         var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
         var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * CalculatedPartMarkup);
         var result = works + parts;
-        if (paymentMethod == "card")
+        if (PaymentMethod.IsCard(paymentMethod))
             result += result * CardPaymentFeeRate;
         if (order.Customer != null && order.Customer.Cars.Count > LoyalCustomerCarCountThreshold)
             result -= result * LoyalCustomerDiscountRate;
-        if (final && order.Status == "Ready")
+        if (final && OrderStatus.IsReady(order.Status))
             result += FinalReadyOrderFee;
         var discount = result > LargeOrderDiscountThreshold
             ? result * LargeOrderDiscountRate
@@ -329,9 +329,9 @@ public class AutoServiceManager
         var phone = order.Customer?.Phone ?? "";
         var email = order.Customer?.Email ?? "";
         var text = $"Order {order.OrderNumber}: new status {order.Status}";
-        if (type == "sms")
+        if (NotificationType.IsSms(type))
             SmsNotifier.SendSms(phone, text);
-        else if (type == "email")
+        else if (NotificationType.IsEmail(type))
             EmailSender.Send(email, "Order status", text);
         else
         {
@@ -351,7 +351,7 @@ public class AutoServiceManager
         AddMechanic("Owen Lane", "electrical", 1500);
         AddPart("Oil filter", "OF-100", 650, 12);
         AddPart("Brake pads", "BR-500", 3200, 5);
-        var order = CreateOrder(c1, car1, "Knock on startup, diagnostics required", m1, "Diagnostics", "card");
+        var order = CreateOrder(c1, car1, "Knock on startup, diagnostics required", m1, OrderStatus.Diagnostics, PaymentMethod.Card);
         AddWorkToOrder(order, "Computer diagnostics", 1.5, 2500);
         SaveAll();
     }
