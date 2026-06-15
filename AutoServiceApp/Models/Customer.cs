@@ -35,6 +35,8 @@ public class Customer : BaseEntity, IExportable
         return firstCar?.GetOwnerPhone();
     }
 
+    public string GetContactDisplayText() => $"{Name} / {Phone}";
+
     public string Export() => $"{Name};{Phone};{Email};{Address}";
     public override string ToString() => string.IsNullOrWhiteSpace(Phone) ? Name : $"{Name} ({Phone})";
 }

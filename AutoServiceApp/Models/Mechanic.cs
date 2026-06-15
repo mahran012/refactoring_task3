@@ -25,5 +25,7 @@ public class Mechanic : BaseEntity
         AssignedOrderIds.Remove(orderId);
     }
 
+    public string GetProfileDisplayText() => $"{Name} - {Specialization}";
+
     public override string ToString() => $"{Name} - {Specialization}, {HourRate:C}/h";
 }

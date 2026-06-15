@@ -24,5 +24,7 @@ public class Part : BaseEntity
         return true;
     }
 
+    public string GetCatalogDisplayText() => $"{Name} ({Article})";
+
     public override string ToString() => $"{Name} [{Article}], {Price:C}, stock {Stock}";
 }
